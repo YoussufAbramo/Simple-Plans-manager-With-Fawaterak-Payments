@@ -88,11 +88,17 @@ class MSFM_Checkout {
         $last_name    = sanitize_text_field($_POST['last_name']);
         $full_name    = trim($first_name . ' ' . $last_name);
         
-        $phone_number = sanitize_text_field($_POST['phone_number']);
-        $country      = isset($_POST['country']) ? sanitize_text_field($_POST['country']) : '';
+        $phone_code   = isset($_POST['phone_code']) ? sanitize_text_field($_POST['phone_code']) : '';
+        $raw_phone    = sanitize_text_field($_POST['phone_number']);
+        
+        // Strip out all '+' signs, hyphens, and spaces
+        $clean_phone  = preg_replace('/[^0-9]/', '', $phone_code . $raw_phone);
+        
+        // Default Country to 'Egypt' if not explicitly provided
+        $country      = isset($_POST['country']) && !empty(trim($_POST['country'])) ? sanitize_text_field($_POST['country']) : 'Egypt';
         $address      = isset($_POST['address']) ? sanitize_textarea_field($_POST['address']) : '';
         $zip_code     = isset($_POST['zip_code']) ? sanitize_text_field($_POST['zip_code']) : '';
-        
+
         $plan_post    = get_post($package_id);
         $plan_name    = $plan_post ? $plan_post->post_title : 'Subscription Plan';
         
@@ -131,6 +137,7 @@ class MSFM_Checkout {
         $amount = ($sale !== '' && $sale !== false) ? $sale : $regular;
         $status = ($payment_method === 'cod') ? 'processing' : 'pending';
 
+        // 1. Order is immediately registered in Dashboard Database
         $wpdb->insert($wpdb->prefix . 'microsaas_orders', array(
             'user_id'        => $user_id,
             'package_id'     => $package_id,
@@ -140,7 +147,7 @@ class MSFM_Checkout {
             'payment_status' => $status,
             'payment_method' => $payment_method,
             'full_name'      => $full_name,
-            'phone_number'   => $phone_number,
+            'phone_number'   => $clean_phone,
             'country'        => $country,
             'address'        => $address,
             'zip_code'       => $zip_code,
@@ -155,21 +162,33 @@ class MSFM_Checkout {
         }
 
         $payment_handler = new MSFM_Fawaterak();
-        $redirect_result = $payment_handler->create_invoice($order_id, $amount, $user_email, $first_name, $last_name, $phone_number, $plan_name);
+        
+        $redirect_result = $payment_handler->create_invoice($order_id, $amount, $user_email, $first_name, $last_name, $clean_phone, $plan_name, $address, $country);
 
-        // Debug Output if connection fails
+        // 2. Catch API Error gracefully
         if (is_array($redirect_result) && isset($redirect_result['error'])) {
-            wp_die('<div style="max-width:600px; margin:50px auto; padding:30px; font-family:sans-serif; border:2px solid #e53e3e; border-radius:8px;">
-                <h2 style="color:#e53e3e; margin-top:0;">Payment Connection Failed</h2>
-                <p><strong>Error Details:</strong> ' . esc_html($redirect_result['error']) . '</p>
-                <a href="javascript:history.back()" style="display:inline-block; padding:10px 20px; background:#3182ce; color:#fff; text-decoration:none; border-radius:5px;">&laquo; Go Back to Checkout</a>
-            </div>');
+            $wpdb->update(
+                $wpdb->prefix . 'microsaas_orders',
+                array('payment_status' => 'failed'),
+                array('id' => $order_id)
+            );
+
+            $checkout_page_id  = get_option('msfm_checkout_page_id');
+            $base_checkout_url = $checkout_page_id ? get_permalink($checkout_page_id) : home_url('/');
+            
+            $error_url = add_query_arg(array(
+                'payment_failed_api' => '1',
+                'error_msg'          => urlencode($redirect_result['error'])
+            ), $base_checkout_url);
+
+            wp_redirect($error_url);
+            exit;
         } 
         
+        // 3. Handle Gateway Redirection or IFrame
         if (is_string($redirect_result) && filter_var($redirect_result, FILTER_VALIDATE_URL)) {
             $integration_type = get_option('msfm_fawaterak_integration_type', 'redirect');
             
-            // Render Iframe
             if ($integration_type === 'iframe') {
                 set_transient('msfm_iframe_url_' . $order_id, $redirect_result, 2 * HOUR_IN_SECONDS);
                 $checkout_page_id = get_option('msfm_checkout_page_id');
@@ -177,7 +196,6 @@ class MSFM_Checkout {
                 wp_redirect($iframe_page);
                 exit;
             } else {
-                // Render Redirect
                 wp_redirect($redirect_result);
                 exit;
             }

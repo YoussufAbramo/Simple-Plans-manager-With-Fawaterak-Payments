@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       Qaff Micro Saas Store Manager
  * Plugin URI:        https://codecom.dev
- * Description:       A complete Micro SaaS management platform designed for WordPress. Features dynamic plan billing, automated renewal emails, seamless Fawaterak payment integrations, automated account creation, and a unified subscriber dashboard.
- * Version:           1.5.10
+ * Description:       An all-in-one WordPress platform for managing Micro SaaS businesses. Includes dynamic pricing plans, passwordless Magic Link authentication, automated subscription renewal email reminders, seamless Fawaterak online payment gateway (Redirect & Embedded IFrame) and Cash on Delivery support, customer profile dashboard, and complete admin order management with editable payment statuses.
+ * Version:           1.6.2
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            CodeCom.dev
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('MSFM_VERSION', '1.5.10');
+define('MSFM_VERSION', '1.6.2');
 define('MSFM_PATH', plugin_dir_path(__FILE__));
 define('MSFM_URL', plugin_dir_url(__FILE__));
 

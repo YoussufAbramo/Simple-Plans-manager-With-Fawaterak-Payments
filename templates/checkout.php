@@ -1,7 +1,7 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-// 1. Handle IFrame Integration Render
+// 1. Handle Embedded IFrame Render
 if (isset($_GET['pay_iframe']) && isset($_GET['order_id'])) {
     $order_id = intval($_GET['order_id']);
     $iframe_url = get_transient('msfm_iframe_url_' . $order_id);
@@ -10,7 +10,6 @@ if (isset($_GET['pay_iframe']) && isset($_GET['order_id'])) {
         <div class="qaff-checkout-wrapper" style="max-width: 900px; margin: 30px auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
             <h2 style="text-align: center; margin-top: 0; margin-bottom: 20px; color: #1a202c; font-size: 26px;">Complete Your Payment</h2>
             <div style="background: #ffffff; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);">
-                <!-- Native Fawaterak IFrame -->
                 <iframe src="<?php echo esc_url($iframe_url); ?>" width="100%" height="750px" frameborder="0" style="border-radius: 8px;"></iframe>
             </div>
             <div style="text-align:center; margin-top: 15px;">
@@ -18,7 +17,7 @@ if (isset($_GET['pay_iframe']) && isset($_GET['order_id'])) {
             </div>
         </div>
         <?php
-        return; // Prevent rendering the rest of the form
+        return; 
     }
 }
 
@@ -29,21 +28,21 @@ $current_user = is_user_logged_in() ? wp_get_current_user() : null;
 
 <div class="qaff-checkout-wrapper" style="max-width: 900px; margin: 30px auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #ffffff; padding: 35px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);">
     
-    <!-- 2. Display Warning Banners Instead of 404 Error Pages -->
-    <?php if (isset($_GET['payment_failed'])): ?>
+    <!-- API Connection & Gateway Feedback Banners -->
+    <?php if (isset($_GET['payment_failed_api'])): ?>
         <div style="background: #fed7d7; color: #9b2c2c; padding: 15px; border-radius: 8px; border: 1px solid #f56565; margin-bottom: 25px; font-weight: 500;">
-            ❌ <strong>Payment Failed.</strong> Your transaction was canceled or declined. Please check your payment details and try again.
+            ❌ <strong>Payment Connection Failed.</strong> <?php echo esc_html(urldecode($_GET['error_msg'])); ?>
         </div>
     <?php endif; ?>
-    <?php if (isset($_GET['payment_pending'])): ?>
-        <div style="background: #feebc8; color: #744210; padding: 15px; border-radius: 8px; border: 1px solid #f6ad55; margin-bottom: 25px; font-weight: 500;">
-            ⏳ <strong>Payment Pending.</strong> Your payment is currently processing. Your subscription will be activated once confirmed by the bank.
+    <?php if (isset($_GET['payment_failed'])): ?>
+        <div style="background: #fed7d7; color: #9b2c2c; padding: 15px; border-radius: 8px; border: 1px solid #f56565; margin-bottom: 25px; font-weight: 500;">
+            ❌ <strong>Payment Declined.</strong> Your transaction was canceled or declined. Please check your payment details and try again.
         </div>
     <?php endif; ?>
 
     <h2 style="text-align: center; margin-top: 0; margin-bottom: 30px; color: #1a202c; font-size: 26px;">Checkout & Subscription</h2>
 
-    <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="POST">
+    <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="POST" id="qaff-checkout-form">
         <?php wp_nonce_field('msfm_checkout_action', 'msfm_checkout_nonce'); ?>
         <input type="hidden" name="action" value="msfm_process_checkout">
 
@@ -63,10 +62,23 @@ $current_user = is_user_logged_in() ? wp_get_current_user() : null;
                     </div>
                 </div>
 
-                <p style="margin-bottom: 15px;">
-                    <label style="display: block; font-weight: 600; color: #4a5568; margin-bottom: 5px;">Phone Number (with country code) <span style="color:red;">*</span></label>
-                    <input type="tel" name="phone_number" required placeholder="+1 555 000 0000" style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box;">
-                </p>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: 600; color: #4a5568; margin-bottom: 5px;">Phone Number <span style="color:red;">*</span></label>
+                    <div style="display: flex; gap: 10px;">
+                        <select name="phone_code" required style="width: 130px; padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box; background: #ffffff;">
+                            <option value="20">🇪🇬 +20</option>
+                            <option value="966">🇸🇦 +966</option>
+                            <option value="971">🇦🇪 +971</option>
+                            <option value="965">🇰🇼 +965</option>
+                            <option value="974">🇶🇦 +974</option>
+                            <option value="968">🇴🇲 +968</option>
+                            <option value="973">🇧🇭 +973</option>
+                            <option value="1">🇺🇸 +1</option>
+                            <option value="44">🇬🇧 +44</option>
+                        </select>
+                        <input type="tel" name="phone_number" required placeholder="10xxxxxxxxx" style="flex: 1; padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box;">
+                    </div>
+                </div>
 
                 <?php if (!is_user_logged_in()): ?>
                     <p style="margin-bottom: 15px;">
@@ -79,11 +91,12 @@ $current_user = is_user_logged_in() ? wp_get_current_user() : null;
                     </p>
                 <?php endif; ?>
 
-                <h3 style="margin-top: 30px; padding-bottom: 10px; border-bottom: 2px solid #3182ce; color: #2d3748; font-size: 18px;">2. Address Information (Optional)</h3>
+                <h3 style="margin-top: 30px; padding-bottom: 10px; border-bottom: 2px solid #3182ce; color: #2d3748; font-size: 18px;">2. Address Information</h3>
 
+                <!-- Country input field defaults to "Egypt" -->
                 <p style="margin-bottom: 15px;">
-                    <label style="display: block; font-weight: 600; color: #4a5568; margin-bottom: 5px;">Country</label>
-                    <input type="text" name="country" placeholder="e.g. United States, Egypt, Saudi Arabia" style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box;">
+                    <label style="display: block; font-weight: 600; color: #4a5568; margin-bottom: 5px;">Country <span style="color:red;">*</span></label>
+                    <input type="text" name="country" required value="<?php echo isset($_POST['country']) ? esc_attr($_POST['country']) : 'Egypt'; ?>" placeholder="e.g. Egypt, Saudi Arabia, United States" style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box;">
                 </p>
 
                 <p style="margin-bottom: 15px;">
@@ -151,7 +164,7 @@ $current_user = is_user_logged_in() ? wp_get_current_user() : null;
                     <?php endif; ?>
                 </div>
 
-                <button type="submit" style="width: 100%; background: #3182ce; color: #ffffff; font-size: 16px; font-weight: bold; padding: 14px; border: none; border-radius: 6px; cursor: pointer;">
+                <button type="submit" id="qaff-submit-btn" style="width: 100%; background: #3182ce; color: #ffffff; font-size: 16px; font-weight: bold; padding: 14px; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s;">
                     Complete Purchase
                 </button>
             </div>
@@ -159,3 +172,12 @@ $current_user = is_user_logged_in() ? wp_get_current_user() : null;
         </div>
     </form>
 </div>
+
+<script>
+document.getElementById('qaff-checkout-form').addEventListener('submit', function() {
+    var btn = document.getElementById('qaff-submit-btn');
+    btn.innerHTML = 'Processing Order... ⏳';
+    btn.style.opacity = '0.7';
+    btn.style.pointerEvents = 'none';
+});
+</script>

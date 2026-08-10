@@ -6,9 +6,7 @@ class MSFM_Settings {
     public function __construct() {
         add_action('admin_menu', array($this, 'add_settings_menu'));
         add_action('admin_init', array($this, 'register_settings'));
-        
-        // New endpoint for the Re-create / Restore Pages tool
-        add_action('admin_post_msfm_recreate_pages', array($this, 'handle_recreate_pages'));
+        add_action('admin_post_msfm_auto_create_page', array($this, 'handle_auto_create_page'));
     }
 
     public static function get_or_create_page($option_key, $title, $content, $slug) {
@@ -70,7 +68,9 @@ class MSFM_Settings {
 
         // Payments Tab
         register_setting('msfm_settings_payments', 'msfm_fawaterak_env', array('default' => 'sandbox'));
+        register_setting('msfm_settings_payments', 'msfm_fawaterak_integration_type', array('default' => 'redirect'));
         register_setting('msfm_settings_payments', 'msfm_fawaterak_api_key', array('default' => ''));
+        register_setting('msfm_settings_payments', 'msfm_fawaterak_provider_key', array('default' => ''));
         register_setting('msfm_settings_payments', 'msfm_enable_cod', array('default' => '1'));
         register_setting('msfm_settings_payments', 'msfm_cod_label', array('default' => 'Pay on Delivery / Cash on Delivery'));
     }
@@ -109,7 +109,6 @@ class MSFM_Settings {
                     ?>
                 </form>
             <?php else: ?>
-                <!-- Pages Tab has custom layout to accommodate the tool button -->
                 <div style="margin-top: 20px;">
                     <form method="post" action="options.php">
                         <?php
@@ -234,10 +233,8 @@ class MSFM_Settings {
         
         <hr style="margin: 30px 0;">
         
-        <!-- Page Recreation Tool -->
         <h3>Page Repair Tools</h3>
-        <p class="description">If you accidentally deleted a page, or if the shortcode is missing, click the button below. It will safely restore the required pages and inject the correct shortcodes without breaking your menus.</p>
-        
+        <p class="description">If you accidentally deleted a page, click the button below to safely restore the required pages and inject the correct shortcodes.</p>
         <div style="background: #fff; padding: 15px; border: 1px solid #ccd0d4; border-left: 4px solid #3182ce; display: inline-block;">
             <a href="<?php echo esc_url(wp_nonce_url(admin_url('admin-post.php?action=msfm_recreate_pages'), 'msfm_recreate_pages_action', 'msfm_recreate_nonce')); ?>" class="button button-secondary">
                 Restore Missing / Broken Pages
@@ -247,11 +244,13 @@ class MSFM_Settings {
     }
 
     private function render_payments_tab() {
-        $fawaterak_env = get_option('msfm_fawaterak_env', 'sandbox');
-        $api_key       = get_option('msfm_fawaterak_api_key');
-        $enable_cod    = get_option('msfm_enable_cod', '1');
-        $cod_label     = get_option('msfm_cod_label', 'Pay on Delivery / Cash on Delivery');
-        $webhook_url   = rest_url('qaff/v1/fawaterak-webhook');
+        $fawaterak_env   = get_option('msfm_fawaterak_env', 'sandbox');
+        $integration_type= get_option('msfm_fawaterak_integration_type', 'redirect');
+        $api_key         = get_option('msfm_fawaterak_api_key');
+        $provider_key    = get_option('msfm_fawaterak_provider_key');
+        $enable_cod      = get_option('msfm_enable_cod', '1');
+        $cod_label       = get_option('msfm_cod_label', 'Pay on Delivery / Cash on Delivery');
+        $webhook_url     = rest_url('qaff/v1/fawaterak-webhook');
         ?>
         <div style="background: #ebf8ff; border: 1px solid #3182ce; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
             <h4 style="margin-top:0; color:#2b6cb0;">🔗 Fawaterak Webhook Listener URL</h4>
@@ -260,24 +259,95 @@ class MSFM_Settings {
         </div>
 
         <h3>Fawaterak Online Gateway</h3>
-        <p class="description">Fawaterak uses a static Bearer Token (API Key) for authentication. Retrieve this from your Fawaterak Dashboard &rarr; Integrations &rarr; API Key.</p>
+        <p class="description">Fawaterak uses a static Bearer Token (API Key) for authentication. Retrieve this from your Fawaterak Dashboard &rarr; Integrations.</p>
         
         <table class="form-table">
             <tr valign="top">
                 <th scope="row">Environment</th>
                 <td>
-                    <label><input type="radio" name="msfm_fawaterak_env" value="sandbox" <?php checked($fawaterak_env, 'sandbox'); ?>> Sandbox / Staging</label>&nbsp;&nbsp;
-                    <label><input type="radio" name="msfm_fawaterak_env" value="live" <?php checked($fawaterak_env, 'live'); ?>> Production / Live</label>
+                    <label>
+                        <input type="radio" name="msfm_fawaterak_env" value="sandbox" <?php checked($fawaterak_env, 'sandbox'); ?> onclick="toggleTestCards('sandbox')"> Sandbox / Staging
+                    </label>&nbsp;&nbsp;
+                    <label>
+                        <input type="radio" name="msfm_fawaterak_env" value="live" <?php checked($fawaterak_env, 'live'); ?> onclick="toggleTestCards('live')"> Production / Live
+                    </label>
+
+                    <!-- Dynamic Test Cards Table for Staging Environment -->
+                    <div id="fawaterak_test_cards" style="display: <?php echo ($fawaterak_env === 'sandbox') ? 'block' : 'none'; ?>; background: #fdfaf6; border: 1px solid #e2c08d; border-radius: 6px; padding: 15px; margin-top: 15px; max-width: 800px;">
+                        <h4 style="margin-top: 0; color: #b7791f; font-size: 15px;">🛠️ Sandbox Test Cards</h4>
+                        <p style="margin-bottom: 15px;">Use these test card numbers when testing Mastercard, Visa, and Meeza flows on staging mode. <strong>Do not use these in production.</strong></p>
+                        
+                        <h5 style="margin-bottom: 5px; color: #2f855a; font-size: 14px;">✅ Cards that always return a SUCCESSFUL transaction</h5>
+                        <table class="wp-list-table widefat fixed striped" style="margin-bottom: 20px;">
+                            <thead>
+                                <tr><th>Brand</th><th>Card number</th><th>Card holder name</th><th>Expiry date</th><th>CSV</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>Mastercard</td><td><code>5123450000000008</code></td><td>Fawaterak test</td><td>12/26</td><td>100</td></tr>
+                                <tr><td>Visa</td><td><code>4005 5500 0000 0001</code></td><td>Fawaterak test</td><td>12/26</td><td>100</td></tr>
+                                <tr><td>Meeza</td><td><code>5078 0362 4660 0381</code></td><td>Fawaterak test</td><td>12/26</td><td>100</td></tr>
+                            </tbody>
+                        </table>
+
+                        <h5 style="margin-bottom: 5px; color: #c53030; font-size: 14px;">❌ Cards that always return a FAILED transaction</h5>
+                        <table class="wp-list-table widefat fixed striped">
+                            <thead>
+                                <tr><th>Brand</th><th>Card number</th><th>Card holder name</th><th>Expiry date</th><th>CSV</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>Mastercard</td><td><code>5543474002249996</code></td><td>Fawaterak test</td><td>05/26</td><td>123</td></tr>
+                                <tr><td>Visa</td><td><code>4222 0000 0672 4235</code></td><td>Fawaterak test</td><td>12/26</td><td>123</td></tr>
+                                <tr><td>Meeza</td><td><code>5078 0362 4278 3546</code></td><td>Fawaterak test</td><td>12/26</td><td>123</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </td>
             </tr>
             <tr valign="top">
-                <th scope="row">Fawaterak API Key (Bearer Token)</th>
+                <th scope="row">Integration Method</th>
+                <td>
+                    <label>
+                        <input type="radio" name="msfm_fawaterak_integration_type" value="redirect" <?php checked($integration_type, 'redirect'); ?> onchange="toggleFawaterakKeys()"> Gateway Redirect (Invoice Link)
+                    </label><br>
+                    <label style="margin-top: 5px; display: inline-block;">
+                        <input type="radio" name="msfm_fawaterak_integration_type" value="iframe" <?php checked($integration_type, 'iframe'); ?> onchange="toggleFawaterakKeys()"> Embedded IFrame (Hosted Checkout)
+                    </label>
+                </td>
+            </tr>
+            <tr valign="top">
+                <th scope="row">Fawaterak API Key (Bearer/Vendor Key)</th>
                 <td>
                     <input type="password" name="msfm_fawaterak_api_key" value="<?php echo esc_attr($api_key); ?>" class="regular-text">
-                    <p class="description">Used for authorization and validating HMAC Webhook signatures.</p>
+                </td>
+            </tr>
+            <tr valign="top" id="msfm_provider_key_row" style="<?php echo ($integration_type === 'iframe') ? '' : 'display: none;'; ?>">
+                <th scope="row">Fawaterak Provider Key</th>
+                <td>
+                    <input type="password" name="msfm_fawaterak_provider_key" value="<?php echo esc_attr($provider_key); ?>" class="regular-text">
+                    <p class="description">Required exclusively for the <strong>Embedded IFrame</strong> method.</p>
                 </td>
             </tr>
         </table>
+        
+        <script type="text/javascript">
+        function toggleFawaterakKeys() {
+            var selectedIntegration = document.querySelector('input[name="msfm_fawaterak_integration_type"]:checked').value;
+            var providerRow = document.getElementById('msfm_provider_key_row');
+            if (selectedIntegration === 'iframe') {
+                providerRow.style.display = 'table-row';
+            } else {
+                providerRow.style.display = 'none';
+            }
+        }
+        function toggleTestCards(env) {
+            var testCardsSection = document.getElementById('fawaterak_test_cards');
+            if (env === 'sandbox') {
+                testCardsSection.style.display = 'block';
+            } else {
+                testCardsSection.style.display = 'none';
+            }
+        }
+        </script>
         
         <hr>
         
@@ -295,9 +365,6 @@ class MSFM_Settings {
         <?php
     }
 
-    /**
-     * Tool: Soft Reset / Restore Core Pages
-     */
     public function handle_recreate_pages() {
         if (!current_user_can('manage_options') || !isset($_GET['msfm_recreate_nonce']) || !wp_verify_nonce($_GET['msfm_recreate_nonce'], 'msfm_recreate_pages_action')) {
             wp_die('Unauthorized request.');
@@ -312,23 +379,13 @@ class MSFM_Settings {
         foreach ($core_pages as $option_key => $data) {
             $page_id = get_option($option_key);
             $page_exists = false;
-            
-            // Check if page exists (even if it's in the trash)
             if ($page_id) {
                 $page = get_post($page_id);
                 if ($page && in_array($page->post_type, array('page', 'post'))) {
                     $page_exists = true;
-                    
-                    // Soft Restore: Update existing post to preserve ID for menus
-                    wp_update_post(array(
-                        'ID'           => $page_id,
-                        'post_content' => $data['content'], // Restore shortcode
-                        'post_status'  => 'publish'         // Un-trash and publish
-                    ));
+                    wp_update_post(array('ID' => $page_id, 'post_content' => $data['content'], 'post_status'  => 'publish'));
                 }
             }
-
-            // If it was permanently deleted from DB, create a brand new one
             if (!$page_exists) {
                 self::get_or_create_page($option_key, $data['title'], $data['content'], $data['slug']);
             }

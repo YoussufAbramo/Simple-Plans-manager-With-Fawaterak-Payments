@@ -9,6 +9,9 @@ class MSFM_Admin {
         add_action('save_post', array($this, 'save_package_meta'));
         add_action('admin_menu', array($this, 'add_orders_menu'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
+        
+        // Admin handler to update order payment status
+        add_action('admin_post_msfm_update_order_status', array($this, 'handle_update_order_status'));
 
         add_filter('manage_saas_package_posts_columns', array($this, 'set_custom_plan_columns'));
         add_action('manage_saas_package_posts_custom_column', array($this, 'render_custom_plan_columns'), 10, 2);
@@ -157,6 +160,30 @@ class MSFM_Admin {
         );
     }
 
+    public function handle_update_order_status() {
+        if (!current_user_can('manage_options')) {
+            wp_die('Unauthorized user.');
+        }
+        check_admin_referer('msfm_update_order_status_action', 'msfm_order_status_nonce');
+
+        $order_id = isset($_POST['order_id']) ? intval($_POST['order_id']) : 0;
+        $status   = isset($_POST['payment_status']) ? sanitize_text_field($_POST['payment_status']) : '';
+
+        $allowed_statuses = array('pending', 'completed', 'paid', 'processing', 'failed', 'cancelled');
+        
+        if ($order_id > 0 && in_array(strtolower($status), $allowed_statuses)) {
+            global $wpdb;
+            $wpdb->update(
+                $wpdb->prefix . 'microsaas_orders',
+                array('payment_status' => strtolower($status)),
+                array('id' => $order_id)
+            );
+        }
+
+        wp_redirect(admin_url('edit.php?post_type=saas_package&page=msfm-orders&updated_status=1'));
+        exit;
+    }
+
     public function render_orders_page() {
         if (!current_user_can('manage_options')) return;
         global $wpdb;
@@ -164,6 +191,13 @@ class MSFM_Admin {
         ?>
         <div class="wrap">
             <h2>Qaff Micro SaaS Orders & Payments</h2>
+
+            <?php if (isset($_GET['updated_status'])): ?>
+                <div class="notice notice-success is-dismissible">
+                    <p><strong>Success:</strong> Order payment status has been updated successfully.</p>
+                </div>
+            <?php endif; ?>
+
             <table class="wp-list-table widefat fixed striped">
                 <thead>
                     <tr>
@@ -185,6 +219,12 @@ class MSFM_Admin {
                         $user = get_userdata($order->user_id);
                         $package = get_post($order->package_id);
                         $customer_name = !empty($order->full_name) ? $order->full_name : ($user ? $user->display_name : 'Guest');
+                        
+                        $status_str = strtolower($order->payment_status);
+                        $bg = '#edf2f7'; $col = '#4a5568';
+                        if (in_array($status_str, ['completed', 'paid'])) { $bg = '#c6f6d5'; $col = '#22543d'; }
+                        elseif ($status_str === 'pending') { $bg = '#feebc8'; $col = '#744210'; }
+                        elseif (in_array($status_str, ['failed', 'cancelled'])) { $bg = '#fed7d7'; $col = '#9b2c2c'; }
                     ?>
                         <tr>
                             <td>#<?php echo esc_html($order->id); ?></td>
@@ -196,37 +236,85 @@ class MSFM_Admin {
                             <td><?php echo esc_html(strtoupper($order->billing_cycle)); ?></td>
                             <td><?php echo esc_html(MSFM_Settings::format_price($order->amount)); ?></td>
                             <td><?php echo esc_html(strtoupper($order->payment_method ? $order->payment_method : 'Fawaterak')); ?></td>
-                            <td><strong><?php echo esc_html(strtoupper($order->payment_status)); ?></strong></td>
-                            <td><?php echo esc_html($order->created_at); ?></td>
                             <td>
-                                <a href="#TB_inline?width=600&height=450&inlineId=order-details-modal-<?php echo $order->id; ?>" class="thickbox button button-small">View Details</a>
+                                <span style="background: <?php echo $bg; ?>; color: <?php echo $col; ?>; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; text-transform: uppercase;">
+                                    <?php echo esc_html($status_str); ?>
+                                </span>
+                            </td>
+                            <td><?php echo esc_html(date('M d, Y', strtotime($order->created_at))); ?></td>
+                            <td>
+                                <a href="#TB_inline?width=750&height=480&inlineId=order-details-modal-<?php echo $order->id; ?>" class="thickbox button button-small">View Details</a>
+                                
+                                <!-- Restyled Modal Popup with Status Editing Capabilities -->
                                 <div id="order-details-modal-<?php echo $order->id; ?>" style="display:none;">
-                                    <div style="padding: 15px;">
-                                        <h2>Order Details #<?php echo esc_html($order->id); ?></h2>
-                                        <hr>
-                                        <div style="display: flex; gap: 20px;">
-                                            <div style="flex: 1;">
-                                                <h3>Customer Information</h3>
-                                                <p><strong>Full Name:</strong> <?php echo esc_html($order->full_name ? $order->full_name : 'N/A'); ?></p>
-                                                <p><strong>Email:</strong> <?php echo esc_html($user ? $user->user_email : 'N/A'); ?></p>
-                                                <p><strong>Phone:</strong> <?php echo esc_html($order->phone_number ? $order->phone_number : 'N/A'); ?></p>
-                                                <p><strong>Country:</strong> <?php echo esc_html($order->country ? $order->country : 'N/A'); ?></p>
-                                                <p><strong>Address:</strong> <?php echo esc_html($order->address ? $order->address : 'N/A'); ?></p>
-                                                <p><strong>Zip Code:</strong> <?php echo esc_html($order->zip_code ? $order->zip_code : 'N/A'); ?></p>
+                                    <div style="padding: 25px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #2d3748;">
+                                        
+                                        <!-- Header Section -->
+                                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #edf2f7; padding-bottom: 15px; margin-bottom: 20px;">
+                                            <div>
+                                                <h2 style="margin: 0; font-size: 22px; color: #1a202c; display: inline-block;">Order <span style="color: #3182ce;">#<?php echo esc_html($order->id); ?></span></h2>
+                                                <div style="margin-top: 4px; font-size: 13px; color: #718096;"><?php echo esc_html(date('F j, Y, g:i a', strtotime($order->created_at))); ?></div>
                                             </div>
-                                            <div style="flex: 1;">
-                                                <h3>Order & Payment Details</h3>
-                                                <p><strong>Selected Plan:</strong> <?php echo esc_html($package ? $package->post_title : 'N/A'); ?></p>
-                                                <p><strong>Billing Cycle:</strong> <?php echo esc_html(strtoupper($order->billing_cycle)); ?></p>
-                                                <p><strong>Total Amount:</strong> <?php echo esc_html(MSFM_Settings::format_price($order->amount)); ?></p>
-                                                <p><strong>Payment Method:</strong> <?php echo esc_html(strtoupper($order->payment_method ? $order->payment_method : 'Fawaterak')); ?></p>
-                                                <p><strong>Status:</strong> <strong><?php echo esc_html(strtoupper($order->payment_status)); ?></strong></p>
-                                                <p><strong>Fawaterak Invoice ID:</strong> <?php echo esc_html($order->fawaterak_invoice_id ? $order->fawaterak_invoice_id : 'N/A'); ?></p>
-                                                <p><strong>Date Placed:</strong> <?php echo esc_html($order->created_at); ?></p>
-                                            </div>
+                                            <span style="background: <?php echo $bg; ?>; color: <?php echo $col; ?>; padding: 6px 14px; border-radius: 20px; font-weight: bold; font-size: 13px; letter-spacing: 0.5px; text-transform: uppercase;">
+                                                <?php echo esc_html($status_str); ?>
+                                            </span>
                                         </div>
+
+                                        <!-- 2-Column Details -->
+                                        <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;">
+                                            
+                                            <!-- Customer Details Card -->
+                                            <div style="flex: 1 1 300px; background: #f7fafc; padding: 18px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                                <h3 style="margin-top: 0; color: #4a5568; font-size: 15px; border-bottom: 1px solid #cbd5e0; padding-bottom: 8px; margin-bottom: 12px;">👤 Customer Details</h3>
+                                                <p style="margin: 6px 0; font-size: 13px;"><strong>Name:</strong> <?php echo esc_html($order->full_name ? $order->full_name : 'N/A'); ?></p>
+                                                <p style="margin: 6px 0; font-size: 13px;"><strong>Email:</strong> <?php echo esc_html($user ? $user->user_email : 'N/A'); ?></p>
+                                                <p style="margin: 6px 0; font-size: 13px;"><strong>Phone:</strong> <?php echo esc_html($order->phone_number ? $order->phone_number : 'N/A'); ?></p>
+                                                <p style="margin: 6px 0; font-size: 13px;"><strong>Country:</strong> <?php echo esc_html($order->country ? $order->country : 'N/A'); ?></p>
+                                                <p style="margin: 6px 0; font-size: 13px;"><strong>Address:</strong> <?php echo esc_html($order->address ? $order->address : 'N/A'); ?></p>
+                                                <p style="margin: 6px 0; font-size: 13px;"><strong>ZIP Code:</strong> <?php echo esc_html($order->zip_code ? $order->zip_code : 'N/A'); ?></p>
+                                            </div>
+
+                                            <!-- Order Details Card -->
+                                            <div style="flex: 1 1 300px; background: #f7fafc; padding: 18px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                                <h3 style="margin-top: 0; color: #4a5568; font-size: 15px; border-bottom: 1px solid #cbd5e0; padding-bottom: 8px; margin-bottom: 12px;">🛍️ Order Breakdown</h3>
+                                                <p style="margin: 6px 0; font-size: 13px;"><strong>Selected Plan:</strong> <?php echo esc_html($package ? $package->post_title : 'N/A'); ?></p>
+                                                <p style="margin: 6px 0; font-size: 13px;"><strong>Billing Cycle:</strong> <span style="text-transform: capitalize;"><?php echo esc_html($order->billing_cycle); ?></span></p>
+                                                <p style="margin: 6px 0; font-size: 13px;"><strong>Total Amount:</strong> <span style="color: #2b6cb0; font-weight: bold; font-size: 15px;"><?php echo esc_html(MSFM_Settings::format_price($order->amount)); ?></span></p>
+                                                <p style="margin: 6px 0; font-size: 13px;"><strong>Payment Method:</strong> <span style="text-transform: capitalize;"><?php echo esc_html($order->payment_method ? $order->payment_method : 'Fawaterak'); ?></span></p>
+                                                <p style="margin: 6px 0; font-size: 13px;"><strong>Gateway Invoice ID:</strong> <?php echo esc_html($order->fawaterak_invoice_id ? $order->fawaterak_invoice_id : '—'); ?></p>
+                                            </div>
+
+                                        </div>
+
+                                        <!-- Edit Payment Status Form -->
+                                        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px;">
+                                            <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="POST" style="margin: 0;">
+                                                <?php wp_nonce_field('msfm_update_order_status_action', 'msfm_order_status_nonce'); ?>
+                                                <input type="hidden" name="action" value="msfm_update_order_status">
+                                                <input type="hidden" name="order_id" value="<?php echo esc_attr($order->id); ?>">
+                                                
+                                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 15px;">
+                                                    <div>
+                                                        <label style="font-weight: bold; font-size: 13px; color: #2d3748; display: block;">Edit Payment Status:</label>
+                                                        <small style="color: #718096;">Manually update the status of this transaction in your database.</small>
+                                                    </div>
+                                                    <div style="display: flex; gap: 10px;">
+                                                        <select name="payment_status" style="padding: 6px 12px; border-radius: 4px; border: 1px solid #cbd5e0; font-size: 13px;">
+                                                            <option value="pending" <?php selected($status_str, 'pending'); ?>>Pending</option>
+                                                            <option value="completed" <?php selected(in_array($status_str, ['completed', 'paid']), true); ?>>Completed / Paid</option>
+                                                            <option value="processing" <?php selected($status_str, 'processing'); ?>>Processing</option>
+                                                            <option value="failed" <?php selected($status_str, 'failed'); ?>>Failed</option>
+                                                            <option value="cancelled" <?php selected($status_str, 'cancelled'); ?>>Cancelled</option>
+                                                        </select>
+                                                        <button type="submit" class="button button-primary">Save Status</button>
+                                                    </div>
+                                                </div>
+                                            </form>
+                                        </div>
+
                                     </div>
                                 </div>
+
                             </td>
                         </tr>
                     <?php endforeach; endif; ?>

@@ -53,7 +53,7 @@ class MSFM_Fawaterak {
         return new WP_REST_Response(array('status' => 'ignored', 'message' => 'Invoice status not paid or not found.'), 200);
     }
 
-    public function create_invoice($order_id, $amount, $user_email, $first_name, $last_name, $phone, $plan_name, $address = '') {
+    public function create_invoice($order_id, $amount, $user_email, $first_name, $last_name, $phone, $plan_name, $address = '', $country = 'Egypt') {
         $env      = get_option('msfm_fawaterak_env', 'sandbox');
         $currency = get_option('msfm_currency', 'USD');
         $api_key  = get_option('msfm_fawaterak_api_key', '');
@@ -70,12 +70,13 @@ class MSFM_Fawaterak {
         $checkout_page_id = get_option('msfm_checkout_page_id');
         
         $base_checkout_url = $checkout_page_id ? get_permalink($checkout_page_id) : home_url('/');
+        $base_portal_url   = $portal_page_id ? get_permalink($portal_page_id) : home_url('/my-profile');
         
-        $success_url = $portal_page_id ? add_query_arg('order_success', $order_id, get_permalink($portal_page_id)) : home_url('/?order_success=' . $order_id);
+        // Redirection routes: Successful & Pending payments now route directly to the User Profile Page
+        $success_url = add_query_arg('order_success', $order_id, $base_portal_url);
+        $pending_url = add_query_arg(array('payment_pending' => '1', 'order_id' => $order_id), $base_portal_url);
         $fail_url    = add_query_arg(array('payment_failed' => '1', 'order_id' => $order_id), $base_checkout_url);
-        $pending_url = add_query_arg(array('payment_pending' => '1', 'order_id' => $order_id), $base_checkout_url);
 
-        // Strict String Parsing for the payload to prevent API 422 Bad Request errors
         $body = array(
             'cartTotal' => strval($amount),
             'currency'  => $currency,
@@ -84,7 +85,8 @@ class MSFM_Fawaterak {
                 'last_name'  => strval($last_name),
                 'email'      => strval($user_email),
                 'phone'      => strval($phone),
-                'address'    => strval($address)
+                'address'    => strval($address),
+                'country'    => !empty($country) ? strval($country) : 'Egypt'
             ),
             'redirectionUrls' => array(
                 'successUrl' => esc_url_raw($success_url),
@@ -107,7 +109,7 @@ class MSFM_Fawaterak {
                 'Accept'        => 'application/json'
             ),
             'body'    => json_encode($body),
-            'timeout' => 30 // Increased from 5s to 30s to prevent cURL error 28 timeouts
+            'timeout' => 30
         ));
 
         if (is_wp_error($response)) {
@@ -131,7 +133,6 @@ class MSFM_Fawaterak {
             return $result['data']['url'];
         }
 
-        // Output exact Fawaterak API Error Message for staging/live issues
         $error_msg = isset($result['message']) ? (is_array($result['message']) ? json_encode($result['message']) : $result['message']) : json_encode($result);
         return array('error' => 'Fawaterak API Rejected Request: ' . $error_msg);
     }

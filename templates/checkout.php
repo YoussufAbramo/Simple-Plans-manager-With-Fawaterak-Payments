@@ -1,0 +1,123 @@
+<?php
+if (!defined('ABSPATH')) exit;
+
+$enable_cod   = get_option('msfm_enable_cod', '1');
+$cod_label    = get_option('msfm_cod_label', 'Pay on Delivery / Cash on Delivery');
+$current_user = is_user_logged_in() ? wp_get_current_user() : null;
+?>
+
+<div class="qaff-checkout-wrapper" style="max-width: 900px; margin: 30px auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #ffffff; padding: 35px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);">
+    <h2 style="text-align: center; margin-top: 0; margin-bottom: 30px; color: #1a202c; font-size: 26px;">Checkout & Subscription</h2>
+
+    <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="POST">
+        <?php wp_nonce_field('msfm_checkout_action', 'msfm_checkout_nonce'); ?>
+        <input type="hidden" name="action" value="msfm_process_checkout">
+
+        <div style="display: flex; flex-wrap: wrap; gap: 35px;">
+            
+            <!-- Left Column: Customer Info & Optional Billing Address -->
+            <div style="flex: 1 1 450px;">
+                <h3 style="margin-top: 0; padding-bottom: 10px; border-bottom: 2px solid #3182ce; color: #2d3748; font-size: 18px;">1. Customer Details</h3>
+                
+                <p style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: 600; color: #4a5568; margin-bottom: 5px;">Full Name <span style="color:red;">*</span></label>
+                    <input type="text" name="full_name" required value="<?php echo $current_user ? esc_attr($current_user->display_name) : ''; ?>" style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box;">
+                </p>
+
+                <p style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: 600; color: #4a5568; margin-bottom: 5px;">Phone Number (with country code) <span style="color:red;">*</span></label>
+                    <input type="tel" name="phone_number" required placeholder="+1 555 000 0000" style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box;">
+                </p>
+
+                <?php if (!is_user_logged_in()): ?>
+                    <p style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: 600; color: #4a5568; margin-bottom: 5px;">Email Address <span style="color:red;">*</span></label>
+                        <input type="email" name="user_email" required style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box;">
+                    </p>
+                    <p style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: 600; color: #4a5568; margin-bottom: 5px;">Create Password <span style="color:red;">*</span></label>
+                        <input type="password" name="user_password" required style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box;">
+                    </p>
+                <?php endif; ?>
+
+                <h3 style="margin-top: 30px; padding-bottom: 10px; border-bottom: 2px solid #3182ce; color: #2d3748; font-size: 18px;">2. Address Information (Optional)</h3>
+
+                <p style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: 600; color: #4a5568; margin-bottom: 5px;">Country</label>
+                    <input type="text" name="country" placeholder="e.g. United States, Egypt, Saudi Arabia" style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box;">
+                </p>
+
+                <p style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: 600; color: #4a5568; margin-bottom: 5px;">Street Address</label>
+                    <textarea name="address" rows="2" style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box;"></textarea>
+                </p>
+
+                <p style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: 600; color: #4a5568; margin-bottom: 5px;">ZIP / Postal Code</label>
+                    <input type="text" name="zip_code" style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box;">
+                </p>
+            </div>
+
+            <!-- Right Column: Order Summary & Gateway Selection -->
+            <div style="flex: 1 1 320px; background: #f8fafc; padding: 25px; border-radius: 8px; border: 1px solid #e2e8f0; height: fit-content;">
+                <h3 style="margin-top: 0; padding-bottom: 10px; border-bottom: 2px solid #3182ce; color: #2d3748; font-size: 18px;">3. Order Summary</h3>
+
+                <p style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: 600; color: #4a5568; margin-bottom: 5px;">Selected Plan</label>
+                    <select name="package_id" id="package-select" onchange="window.location.href='?package_id='+this.value" style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px; background: #ffffff; box-sizing: border-box;">
+                        <?php foreach ($packages as $pkg): ?>
+                            <option value="<?php echo $pkg->ID; ?>" <?php selected($pkg->ID, $package_id); ?>>
+                                <?php echo esc_html($pkg->post_title); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </p>
+
+                <div style="margin-bottom: 20px; background: #ffffff; padding: 15px; border: 1px solid #e2e8f0; border-radius: 6px;">
+                    <label style="display: block; font-weight: 600; color: #4a5568; margin-bottom: 10px;">Billing Frequency</label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="billing_cycle" value="monthly" checked> Monthly: 
+                        <?php 
+                            if ($monthly_sale !== '' && $monthly_sale !== false) {
+                                echo '<del style="color:#a00;">' . esc_html(MSFM_Settings::format_price($monthly_reg)) . '</del> <strong style="color:#2b6cb0;">' . esc_html(MSFM_Settings::format_price($monthly_sale)) . '</strong>';
+                            } else {
+                                echo '<strong>' . esc_html(MSFM_Settings::format_price($monthly_reg)) . '</strong>';
+                            }
+                        ?>
+                    </label>
+                    <label style="display: block; cursor: pointer;">
+                        <input type="radio" name="billing_cycle" value="annual"> Annual: 
+                        <?php 
+                            if ($annual_sale !== '' && $annual_sale !== false) {
+                                echo '<del style="color:#a00;">' . esc_html(MSFM_Settings::format_price($annual_reg)) . '</del> <strong style="color:#2b6cb0;">' . esc_html(MSFM_Settings::format_price($annual_sale)) . '</strong>';
+                            } else {
+                                echo '<strong>' . esc_html(MSFM_Settings::format_price($annual_reg)) . '</strong>';
+                            }
+                        ?>
+                    </label>
+                </div>
+
+                <h3 style="margin-top: 25px; padding-bottom: 10px; border-bottom: 2px solid #3182ce; color: #2d3748; font-size: 18px;">4. Payment Method</h3>
+
+                <div style="background: #ffffff; padding: 15px; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 10px; cursor: pointer;">
+                        <input type="radio" name="payment_method" value="fawaterak" checked> <strong>Fawaterak Online Gateway</strong>
+                        <br><small style="color: #718096; margin-left: 20px; display: block;">Credit Cards, Fawry, Mobile Wallets.</small>
+                    </label>
+                    <?php if ($enable_cod == '1'): ?>
+                        <hr style="margin: 10px 0; border: 0; border-top: 1px solid #edf2f7;">
+                        <label style="display: block; cursor: pointer;">
+                            <input type="radio" name="payment_method" value="cod"> <strong><?php echo esc_html($cod_label); ?></strong>
+                            <br><small style="color: #718096; margin-left: 20px; display: block;">Complete order now and pay offline later.</small>
+                        </label>
+                    <?php endif; ?>
+                </div>
+
+                <button type="submit" style="width: 100%; background: #3182ce; color: #ffffff; font-size: 16px; font-weight: bold; padding: 14px; border: none; border-radius: 6px; cursor: pointer;">
+                    Complete Purchase
+                </button>
+            </div>
+
+        </div>
+    </form>
+</div>

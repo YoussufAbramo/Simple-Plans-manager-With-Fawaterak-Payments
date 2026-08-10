@@ -3,7 +3,7 @@
  * Plugin Name:       Simple Plans Manager & Fawaterak Payment Integrations
  * Plugin URI:        https://codecom.dev
  * Description:       A lightweight, robust WordPress plugin designed to easily create and manage subscription plans, handle passwordless Magic Link authentication, automate expiration reminders, and seamlessly process payments using Fawaterak (Gateway Redirect & Embedded IFrame) or Cash on Delivery. Includes a clean user dashboard and full admin order status controls.
- * Version:           1.6.4
+ * Version:           1.6.5
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            CodeCom.dev
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('MSFM_VERSION', '1.6.4');
+define('MSFM_VERSION', '1.6.5');
 define('MSFM_PATH', plugin_dir_path(__FILE__));
 define('MSFM_URL', plugin_dir_url(__FILE__));
 

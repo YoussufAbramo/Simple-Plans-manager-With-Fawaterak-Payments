@@ -9,15 +9,14 @@ class MSFM_User_Portal {
 
     public function render_portal() {
         if (!is_user_logged_in()) {
-            $login_page_id = get_option('msfm_login_page_id');
-            $login_url     = $login_page_id ? get_permalink($login_page_id) : home_url('/login');
+            $login_page_id = MSFM_Settings::get_or_create_page('msfm_login_page_id', 'Login', '[saas_login_form]', 'login');
+            $login_url     = get_permalink($login_page_id);
             return '<div style="text-align:center; padding:30px; background:#f7fafc; border-radius:8px; border:1px solid #e2e8f0;">
-                <p style="font-size:16px;">Please <a href="' . esc_url($login_url) . '" style="color:#3182ce; font-weight:bold;">log in</a> to access your subscriber portal and profile.</p>
+                <p style="font-size:16px;">Please <a href="' . esc_url($login_url) . '" style="color:#2b6cb0; font-weight:bold;">log in</a> to access My Profile.</p>
             </div>';
         }
 
-        $current_user    = wp_get_current_user();
-        $currency_symbol = get_option('msfm_currency_symbol', 'EGP');
+        $current_user = wp_get_current_user();
 
         global $wpdb;
         $orders = $wpdb->get_results($wpdb->prepare(
@@ -25,7 +24,6 @@ class MSFM_User_Portal {
             $current_user->ID
         ));
 
-        // Active Subscription Analytics
         $active_sub = null;
         $days_remaining = 0;
         $is_active = false;

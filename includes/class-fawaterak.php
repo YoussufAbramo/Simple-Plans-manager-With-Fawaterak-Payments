@@ -3,50 +3,6 @@ if (!defined('ABSPATH')) exit;
 
 class MSFM_Fawaterak {
 
-    public function __construct() {
-        add_action('rest_api_init', array($this, 'register_webhook_route'));
-    }
-
-    /**
-     * Register REST API Webhook Route
-     */
-    public function register_webhook_route() {
-        register_rest_route('qaff/v1', '/fawaterak-webhook', array(
-            'methods'             => 'POST',
-            'callback'            => array($this, 'handle_webhook_payload'),
-            'permission_callback' => '__return_true',
-        ));
-    }
-
-    /**
-     * Process Server-to-Server Payment Callback from Fawaterak
-     */
-    public function handle_webhook_payload($request) {
-        $data = $request->get_json_params();
-
-        if (empty($data)) {
-            $data = $_POST;
-        }
-
-        $invoice_id = isset($data['invoice_id']) ? sanitize_text_field($data['invoice_id']) : '';
-        $status     = isset($data['status']) ? strtolower(sanitize_text_field($data['status'])) : '';
-
-        if (!empty($invoice_id) && in_array($status, array('paid', 'success', 'completed'))) {
-            global $wpdb;
-            $updated = $wpdb->update(
-                $wpdb->prefix . 'microsaas_orders',
-                array('payment_status' => 'completed'),
-                array('fawaterak_invoice_id' => $invoice_id)
-            );
-
-            if ($updated !== false) {
-                return new WP_REST_Response(array('status' => 'success', 'message' => 'Order marked as completed'), 200);
-            }
-        }
-
-        return new WP_REST_Response(array('status' => 'ignored', 'message' => 'Invalid status or invoice_id'), 200);
-    }
-
     private function get_access_token() {
         $auth_type = get_option('msfm_fawaterak_auth_type', 'bearer');
 

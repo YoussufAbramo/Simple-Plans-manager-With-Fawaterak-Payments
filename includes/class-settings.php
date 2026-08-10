@@ -57,8 +57,9 @@ class MSFM_Settings {
         register_setting('msfm_settings_general', 'msfm_currency', array('default' => 'USD'));
         register_setting('msfm_settings_general', 'msfm_currency_symbol', array('default' => '$'));
         register_setting('msfm_settings_general', 'msfm_currency_position', array('default' => 'before'));
-        register_setting('msfm_settings_general', 'msfm_portal_btn_label', array('default' => 'Launch App Portal'));
-        register_setting('msfm_settings_general', 'msfm_portal_btn_url', array('default' => 'https://qaff.xyz'));
+        register_setting('msfm_settings_general', 'msfm_portal_btn_label', array('default' => 'Call To Action'));
+        register_setting('msfm_settings_general', 'msfm_portal_btn_url', array('default' => '#'));
+        register_setting('msfm_settings_general', 'msfm_enable_renewal_emails', array('default' => '1'));
 
         // Pages Tab
         register_setting('msfm_settings_pages', 'msfm_checkout_page_id', array('default' => '0'));
@@ -67,8 +68,6 @@ class MSFM_Settings {
 
         // Payments Tab
         register_setting('msfm_settings_payments', 'msfm_fawaterak_env', array('default' => 'sandbox'));
-        register_setting('msfm_settings_payments', 'msfm_fawaterak_auth_type', array('default' => 'bearer'));
-        register_setting('msfm_settings_payments', 'msfm_fawaterak_vendor_key', array('default' => ''));
         register_setting('msfm_settings_payments', 'msfm_fawaterak_client_id', array('default' => ''));
         register_setting('msfm_settings_payments', 'msfm_fawaterak_client_secret', array('default' => ''));
         register_setting('msfm_settings_payments', 'msfm_fawaterak_token_url', array('default' => ''));
@@ -113,8 +112,9 @@ class MSFM_Settings {
         $currency          = get_option('msfm_currency', 'USD');
         $currency_symbol   = get_option('msfm_currency_symbol', '$');
         $currency_position = get_option('msfm_currency_position', 'before');
-        $btn_label         = get_option('msfm_portal_btn_label', 'Launch App Portal');
-        $btn_url           = get_option('msfm_portal_btn_url', 'https://qaff.xyz');
+        $btn_label         = get_option('msfm_portal_btn_label', 'Call To Action');
+        $btn_url           = get_option('msfm_portal_btn_url', '#');
+        $enable_renewal    = get_option('msfm_enable_renewal_emails', '1');
         ?>
         <h3>Currency Configuration</h3>
         <table class="form-table">
@@ -134,7 +134,6 @@ class MSFM_Settings {
                 <th scope="row">Currency Symbol</th>
                 <td>
                     <input type="text" name="msfm_currency_symbol" value="<?php echo esc_attr($currency_symbol); ?>" class="regular-text">
-                    <p class="description">e.g., $, EGP, €, SAR</p>
                 </td>
             </tr>
             <tr valign="top">
@@ -142,6 +141,22 @@ class MSFM_Settings {
                 <td>
                     <label><input type="radio" name="msfm_currency_position" value="before" <?php checked($currency_position, 'before'); ?>> Before Price ($99)</label>&nbsp;&nbsp;
                     <label><input type="radio" name="msfm_currency_position" value="after" <?php checked($currency_position, 'after'); ?>> After Price (99 $)</label>
+                </td>
+            </tr>
+        </table>
+
+        <hr>
+
+        <h3>Automated Email Notifications</h3>
+        <table class="form-table">
+            <tr valign="top">
+                <th scope="row">Renewal Reminders</th>
+                <td>
+                    <label>
+                        <input type="checkbox" name="msfm_enable_renewal_emails" value="1" <?php checked($enable_renewal, '1'); ?>>
+                        Send automated renewal emails 3 days before subscription expires
+                    </label>
+                    <p class="description">Includes a personalized message and a direct checkout link for the user.</p>
                 </td>
             </tr>
         </table>
@@ -159,7 +174,7 @@ class MSFM_Settings {
             <tr valign="top">
                 <th scope="row">Redirect Target URL</th>
                 <td>
-                    <input type="url" name="msfm_portal_btn_url" value="<?php echo esc_attr($btn_url); ?>" class="regular-text">
+                    <input type="text" name="msfm_portal_btn_url" value="<?php echo esc_attr($btn_url); ?>" class="regular-text">
                 </td>
             </tr>
         </table>
@@ -175,31 +190,51 @@ class MSFM_Settings {
         <table class="form-table">
             <tr valign="top">
                 <th scope="row">Checkout Page</th>
-                <td><?php wp_dropdown_pages(array('name' => 'msfm_checkout_page_id', 'selected' => $checkout_page_id)); ?></td>
+                <td>
+                    <?php wp_dropdown_pages(array('name' => 'msfm_checkout_page_id', 'selected' => $checkout_page_id)); ?>
+                    <?php if ($checkout_page_id): ?>
+                        <a href="<?php echo esc_url(get_permalink($checkout_page_id)); ?>" target="_blank" class="button button-small" style="margin-left:10px; vertical-align:middle;">View Page &rarr;</a>
+                    <?php endif; ?>
+                </td>
             </tr>
             <tr valign="top">
                 <th scope="row">Login Page</th>
-                <td><?php wp_dropdown_pages(array('name' => 'msfm_login_page_id', 'selected' => $login_page_id)); ?></td>
+                <td>
+                    <?php wp_dropdown_pages(array('name' => 'msfm_login_page_id', 'selected' => $login_page_id)); ?>
+                    <?php if ($login_page_id): ?>
+                        <a href="<?php echo esc_url(get_permalink($login_page_id)); ?>" target="_blank" class="button button-small" style="margin-left:10px; vertical-align:middle;">View Page &rarr;</a>
+                    <?php endif; ?>
+                </td>
             </tr>
             <tr valign="top">
                 <th scope="row">My Profile Page</th>
-                <td><?php wp_dropdown_pages(array('name' => 'msfm_portal_page_id', 'selected' => $portal_page_id)); ?></td>
+                <td>
+                    <?php wp_dropdown_pages(array('name' => 'msfm_portal_page_id', 'selected' => $portal_page_id)); ?>
+                    <?php if ($portal_page_id): ?>
+                        <a href="<?php echo esc_url(get_permalink($portal_page_id)); ?>" target="_blank" class="button button-small" style="margin-left:10px; vertical-align:middle;">View Page &rarr;</a>
+                    <?php endif; ?>
+                </td>
             </tr>
         </table>
         <?php
     }
 
     private function render_payments_tab() {
-        $fawaterak_env = get_option('msfm_fawaterak_env');
-        $auth_type     = get_option('msfm_fawaterak_auth_type', 'bearer');
-        $vendor_key    = get_option('msfm_fawaterak_vendor_key');
+        $fawaterak_env = get_option('msfm_fawaterak_env', 'sandbox');
         $client_id     = get_option('msfm_fawaterak_client_id');
         $client_secret = get_option('msfm_fawaterak_client_secret');
         $token_url     = get_option('msfm_fawaterak_token_url');
         $enable_cod    = get_option('msfm_enable_cod', '1');
         $cod_label     = get_option('msfm_cod_label', 'Pay on Delivery / Cash on Delivery');
+        $webhook_url   = rest_url('qaff/v1/fawaterak-webhook');
         ?>
-        <h3>Fawaterak Online Gateway</h3>
+        <div style="background: #ebf8ff; border: 1px solid #3182ce; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+            <h4 style="margin-top:0; color:#2b6cb0;">🔗 Fawaterak Webhook Listener URL</h4>
+            <p style="margin-bottom:8px;">Copy and paste this Webhook URL into your <strong>Fawaterak Vendor Dashboard Account Settings</strong> to enable automated background order status updates:</p>
+            <code style="font-size:14px; background:#fff; padding:6px 10px; border:1px solid #cbd5e0; border-radius:4px; display:inline-block; font-weight:bold;"><?php echo esc_url($webhook_url); ?></code>
+        </div>
+
+        <h3>Fawaterak Online Gateway (OAuth 2.0)</h3>
         <table class="form-table">
             <tr valign="top">
                 <th scope="row">Environment</th>
@@ -209,19 +244,10 @@ class MSFM_Settings {
                 </td>
             </tr>
             <tr valign="top">
-                <th scope="row">Authentication Method</th>
-                <td>
-                    <label><input type="radio" name="msfm_fawaterak_auth_type" value="bearer" <?php checked($auth_type, 'bearer'); ?>> Static Bearer Key</label>&nbsp;&nbsp;
-                    <label><input type="radio" name="msfm_fawaterak_auth_type" value="oauth" <?php checked($auth_type, 'oauth'); ?>> OAuth 2.0 Client Credentials</label>
-                </td>
-            </tr>
-            <tr valign="top">
-                <th scope="row">Vendor Key</th>
-                <td><input type="password" name="msfm_fawaterak_vendor_key" value="<?php echo esc_attr($vendor_key); ?>" class="regular-text"></td>
-            </tr>
-            <tr valign="top">
                 <th scope="row">OAuth Token URL</th>
-                <td><input type="url" name="msfm_fawaterak_token_url" value="<?php echo esc_attr($token_url); ?>" class="regular-text"></td>
+                <td>
+                    <input type="url" name="msfm_fawaterak_token_url" value="<?php echo esc_attr($token_url); ?>" class="regular-text" placeholder="https://app.fawaterk.com/oauth/token">
+                </td>
             </tr>
             <tr valign="top">
                 <th scope="row">Client ID</th>
@@ -232,7 +258,9 @@ class MSFM_Settings {
                 <td><input type="password" name="msfm_fawaterak_client_secret" value="<?php echo esc_attr($client_secret); ?>" class="regular-text"></td>
             </tr>
         </table>
+        
         <hr>
+        
         <h3>Pay on Delivery</h3>
         <table class="form-table">
             <tr valign="top">

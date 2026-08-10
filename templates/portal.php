@@ -3,15 +3,15 @@ if (!defined('ABSPATH')) exit;
 
 $active_plan = $active_sub ? get_post($active_sub->package_id) : null;
 $phone       = !empty($orders[0]->phone_number) ? $orders[0]->phone_number : 'N/A';
-$btn_label   = get_option('msfm_portal_btn_label', 'Launch App Portal');
-$btn_url     = get_option('msfm_portal_btn_url', 'https://qaff.xyz');
+$btn_label   = get_option('msfm_portal_btn_label', 'Call To Action');
+$btn_url     = get_option('msfm_portal_btn_url', '#');
 ?>
 
 <div class="qaff-portal-wrapper" style="max-width: 1000px; margin: 0 auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
     
     <?php if (isset($_GET['order_success'])): ?>
         <div style="background: #c6f6d5; color: #22543d; padding: 15px; border-radius: 8px; border: 1px solid #9ae6b4; margin-bottom: 25px; font-weight: 500;">
-            🎉 Thank you! Your order #<?php echo esc_html($_GET['order_success']); ?> has been received and is being processed.
+            ?? Thank you! Your order #<?php echo esc_html($_GET['order_success']); ?> has been received and is being processed.
         </div>
     <?php endif; ?>
 
@@ -23,8 +23,8 @@ $btn_url     = get_option('msfm_portal_btn_url', 'https://qaff.xyz');
         </div>
         <div>
             <?php if (!empty($btn_url)): ?>
-                <a href="<?php echo esc_url($btn_url); ?>" target="_blank" style="background: #3182ce; color: #ffffff; font-weight: bold; text-decoration: none; padding: 10px 18px; border-radius: 6px; font-size: 14px; margin-right: 10px; display: inline-block;">
-                    🚀 <?php echo esc_html($btn_label); ?>
+                <a href="<?php echo esc_url($btn_url); ?>" style="background: #3182ce; color: #ffffff; font-weight: bold; text-decoration: none; padding: 10px 18px; border-radius: 6px; font-size: 14px; margin-right: 10px; display: inline-block;">
+                    ?? <?php echo esc_html($btn_label); ?>
                 </a>
             <?php endif; ?>
             <a href="<?php echo esc_url(wp_logout_url()); ?>" style="background: #edf2f7; color: #4a5568; font-weight: 600; text-decoration: none; padding: 10px 18px; border-radius: 6px; font-size: 14px; display: inline-block;">

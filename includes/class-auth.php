@@ -22,12 +22,12 @@ class MSFM_Auth {
 
     public function render_login_form() {
         if (is_user_logged_in()) {
-            $portal_page_id = get_option('msfm_portal_page_id');
-            $portal_url     = $portal_page_id ? get_permalink($portal_page_id) : home_url('/');
+            $portal_page_id = MSFM_Settings::get_or_create_page('msfm_portal_page_id', 'My Profile', '[saas_user_portal]', 'my-profile');
+            $portal_url     = get_permalink($portal_page_id);
             
             return '<div style="background:#f7fafc; padding:20px; border-radius:8px; border:1px solid #e2e8f0; text-align:center;">
                 <p style="margin-bottom:15px; font-size:16px;">You are currently logged in as <strong>' . esc_html(wp_get_current_user()->user_email) . '</strong>.</p>
-                <a href="' . esc_url($portal_url) . '" class="button button-primary" style="margin-right:10px;">Go to Profile Portal</a>
+                <a href="' . esc_url($portal_url) . '" class="button button-primary" style="margin-right:10px;">Go to My Profile</a>
                 <a href="' . esc_url(wp_logout_url()) . '" class="button button-secondary">Logout</a>
             </div>';
         }
@@ -69,10 +69,8 @@ class MSFM_Auth {
                 wp_set_current_user($user_id);
                 wp_set_auth_cookie($user_id);
 
-                $portal_page_id = get_option('msfm_portal_page_id');
-                $redirect_url   = $portal_page_id ? get_permalink($portal_page_id) : home_url('/');
-                
-                wp_redirect($redirect_url);
+                $portal_page_id = MSFM_Settings::get_or_create_page('msfm_portal_page_id', 'My Profile', '[saas_user_portal]', 'my-profile');
+                wp_redirect(get_permalink($portal_page_id));
                 exit;
             } else {
                 wp_die('Invalid or expired Magic Link token.');
@@ -81,8 +79,8 @@ class MSFM_Auth {
     }
 
     public function handle_logout_redirect() {
-        $login_page_id = get_option('msfm_login_page_id');
-        $login_url     = $login_page_id ? get_permalink($login_page_id) : home_url('/login');
+        $login_page_id = MSFM_Settings::get_or_create_page('msfm_login_page_id', 'Login', '[saas_login_form]', 'login');
+        $login_url     = get_permalink($login_page_id);
         
         wp_redirect(add_query_arg('logged_out', '1', $login_url));
         exit;

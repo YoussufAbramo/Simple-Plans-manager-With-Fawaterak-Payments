@@ -13,7 +13,8 @@ jQuery(document).ready(function ($) {
             type: 'POST',
             data: {
                 action: 'msfm_send_magic_link',
-                email: email
+                email: email,
+                nonce: msfm_vars.nonce
             },
             success: function (response) {
                 if (response.success) {

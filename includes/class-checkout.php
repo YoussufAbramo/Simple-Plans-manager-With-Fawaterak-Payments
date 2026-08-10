@@ -21,10 +21,42 @@ class MSFM_Checkout {
 
     public function render_checkout_page() {
         $package_id = isset($_GET['package_id']) ? intval($_GET['package_id']) : 0;
-        $packages = get_posts(array('post_type' => 'saas_package', 'numberposts' => -1));
+        
+        $packages = get_posts(array(
+            'post_type'   => 'saas_package',
+            'post_status' => array('publish', 'private'),
+            'numberposts' => -1
+        ));
 
-        if (!$package_id && !empty($packages)) {
+        $target_package = null;
+        if ($package_id > 0) {
+            $target_package = get_post($package_id);
+            if (!$target_package || $target_package->post_type !== 'saas_package') {
+                $target_package = null;
+            }
+        }
+
+        if ($target_package) {
+            $exists = false;
+            foreach ($packages as $p) {
+                if ($p->ID === $target_package->ID) {
+                    $exists = true;
+                    break;
+                }
+            }
+            if (!$exists) {
+                $packages[] = $target_package;
+            }
+        } else if (!empty($packages)) {
             $package_id = $packages[0]->ID;
+            $target_package = $packages[0];
+        }
+
+        if (!$target_package && empty($packages)) {
+            return '<div style="max-width:600px; margin:40px auto; padding:25px; background:#fff3cd; border:1px solid #ffeeba; border-radius:8px; color:#856404; text-align:center;">
+                <h3 style="margin-top:0;">No Subscription Plans Found</h3>
+                <p>There are no active plans currently available for purchase. Please check back later.</p>
+            </div>';
         }
 
         $monthly_reg  = get_post_meta($package_id, '_monthly_price', true);
@@ -50,7 +82,6 @@ class MSFM_Checkout {
         $package_id     = intval($_POST['package_id']);
         $billing_cycle = sanitize_text_field($_POST['billing_cycle']);
         $payment_method = sanitize_text_field($_POST['payment_method']);
-        $coupon_code    = isset($_POST['applied_coupon_code']) ? strtoupper(sanitize_text_field($_POST['applied_coupon_code'])) : '';
         $currency       = get_option('msfm_currency', 'USD');
 
         $full_name    = sanitize_text_field($_POST['full_name']);
@@ -83,7 +114,6 @@ class MSFM_Checkout {
             ));
         }
 
-        // Calculate price
         if ($billing_cycle === 'annual') {
             $sale    = get_post_meta($package_id, '_annual_sale_price', true);
             $regular = get_post_meta($package_id, '_annual_price', true);
@@ -92,51 +122,22 @@ class MSFM_Checkout {
             $regular = get_post_meta($package_id, '_monthly_price', true);
         }
 
-        $base_amount     = ($sale !== '' && $sale !== false) ? floatval($sale) : floatval($regular);
-        $discount_amount = 0.00;
-
-        // Process Coupon if provided
-        if (!empty($coupon_code)) {
-            $c_query = new WP_Query(array('post_type' => 'qaff_coupon', 'title' => $coupon_code, 'posts_per_page' => 1));
-            if ($c_query->have_posts()) {
-                $c_id   = $c_query->posts[0]->ID;
-                $c_type = get_post_meta($c_id, '_coupon_type', true);
-                $c_amt  = floatval(get_post_meta($c_id, '_coupon_amount', true));
-
-                if ($c_type === 'percent') {
-                    $discount_amount = ($base_amount * ($c_amt / 100));
-                } else {
-                    $discount_amount = $c_amt;
-                }
-
-                if ($discount_amount > $base_amount) {
-                    $discount_amount = $base_amount;
-                }
-
-                // Increment redemption count
-                $count = intval(get_post_meta($c_id, '_coupon_usage_count', true));
-                update_post_meta($c_id, '_coupon_usage_count', $count + 1);
-            }
-        }
-
-        $final_amount = $base_amount - $discount_amount;
-        $status       = ($payment_method === 'cod') ? 'processing' : 'pending';
+        $amount = ($sale !== '' && $sale !== false) ? $sale : $regular;
+        $status = ($payment_method === 'cod') ? 'processing' : 'pending';
 
         $wpdb->insert($wpdb->prefix . 'microsaas_orders', array(
-            'user_id'         => $user_id,
-            'package_id'      => $package_id,
-            'billing_cycle'   => $billing_cycle,
-            'amount'          => $final_amount,
-            'discount_amount' => $discount_amount,
-            'coupon_code'     => $coupon_code,
-            'currency'        => $currency,
-            'payment_status'  => $status,
-            'payment_method'  => $payment_method,
-            'full_name'       => $full_name,
-            'phone_number'    => $phone_number,
-            'country'         => $country,
-            'address'         => $address,
-            'zip_code'        => $zip_code,
+            'user_id'        => $user_id,
+            'package_id'     => $package_id,
+            'billing_cycle'  => $billing_cycle,
+            'amount'         => $amount,
+            'currency'       => $currency,
+            'payment_status' => $status,
+            'payment_method' => $payment_method,
+            'full_name'      => $full_name,
+            'phone_number'   => $phone_number,
+            'country'        => $country,
+            'address'        => $address,
+            'zip_code'       => $zip_code,
         ));
 
         $order_id = $wpdb->insert_id;
@@ -148,7 +149,7 @@ class MSFM_Checkout {
         }
 
         $payment_handler = new MSFM_Fawaterak();
-        $redirect_url = $payment_handler->create_invoice($order_id, $final_amount, get_userdata($user_id)->user_email);
+        $redirect_url = $payment_handler->create_invoice($order_id, $amount, get_userdata($user_id)->user_email);
 
         if ($redirect_url) {
             wp_redirect($redirect_url);

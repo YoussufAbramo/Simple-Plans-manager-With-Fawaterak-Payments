@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) exit;
     <?php endif; ?>
 
     <h3 style="margin-top: 0; text-align: center; color: #2d3748; font-size: 22px;">Account Login</h3>
-    <p style="text-align: center; color: #718096; font-size: 14px; margin-bottom: 25px;">Enter your email address below to receive a instant passwordless Magic Link.</p>
+    <p style="text-align: center; color: #718096; font-size: 14px; margin-bottom: 25px;">Enter your email address below to receive a passwordless Magic Link.</p>
 
     <form id="msfm-magic-form" method="POST">
         <p style="margin-bottom: 20px;">
@@ -20,7 +20,7 @@ if (!defined('ABSPATH')) exit;
         </p>
 
         <p style="margin-bottom: 0;">
-            <button type="submit" name="msfm_login_submit" style="width: 100%; background: #3182ce; color: #ffffff; font-weight: bold; font-size: 16px; padding: 12px; border: none; border-radius: 6px; cursor: pointer; transition: background 0.2s;">
+            <button type="submit" name="msfm_login_submit" style="width: 100%; background: #3182ce; color: #ffffff; font-weight: bold; font-size: 16px; padding: 12px; border: none; border-radius: 6px; cursor: pointer;">
                 Send Magic Link
             </button>
         </p>

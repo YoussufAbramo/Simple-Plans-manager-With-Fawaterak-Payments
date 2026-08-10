@@ -15,7 +15,7 @@ $current_user = is_user_logged_in() ? wp_get_current_user() : null;
 
         <div style="display: flex; flex-wrap: wrap; gap: 35px;">
             
-            <!-- Left Column: Customer Info & Optional Billing Address -->
+            <!-- Left Column: Customer Details -->
             <div style="flex: 1 1 450px;">
                 <h3 style="margin-top: 0; padding-bottom: 10px; border-bottom: 2px solid #3182ce; color: #2d3748; font-size: 18px;">1. Customer Details</h3>
                 
@@ -58,7 +58,7 @@ $current_user = is_user_logged_in() ? wp_get_current_user() : null;
                 </p>
             </div>
 
-            <!-- Right Column: Order Summary & Gateway Selection -->
+            <!-- Right Column: Order Summary & Payment Options -->
             <div style="flex: 1 1 320px; background: #f8fafc; padding: 25px; border-radius: 8px; border: 1px solid #e2e8f0; height: fit-content;">
                 <h3 style="margin-top: 0; padding-bottom: 10px; border-bottom: 2px solid #3182ce; color: #2d3748; font-size: 18px;">3. Order Summary</h3>
 

@@ -1,14 +1,14 @@
 <?php
 /**
- * Plugin Name:       Qaff Micro Saas Store Manager
+ * Plugin Name:       Simple Plans Manager & Fawaterak Payment Integrations
  * Plugin URI:        https://codecom.dev
- * Description:       An all-in-one WordPress platform for managing Micro SaaS businesses. Includes dynamic pricing plans, passwordless Magic Link authentication, automated subscription renewal email reminders, seamless Fawaterak online payment gateway (Redirect & Embedded IFrame) and Cash on Delivery support, customer profile dashboard, and complete admin order management with editable payment statuses.
- * Version:           1.6.2
+ * Description:       A lightweight, robust WordPress plugin designed to easily create and manage subscription plans, handle passwordless Magic Link authentication, automate expiration reminders, and seamlessly process payments using Fawaterak (Gateway Redirect & Embedded IFrame) or Cash on Delivery. Includes a clean user dashboard and full admin order status controls.
+ * Version:           1.6.4
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            CodeCom.dev
  * Author URI:        https://codecom.dev
- * Text Domain:       qaff-microsaas
+ * Text Domain:       simple-plans-manager
  * License:           GPLv2 or later
  */
 
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('MSFM_VERSION', '1.6.2');
+define('MSFM_VERSION', '1.6.4');
 define('MSFM_PATH', plugin_dir_path(__FILE__));
 define('MSFM_URL', plugin_dir_url(__FILE__));
 
@@ -64,15 +64,8 @@ class Qaff_MicroSaaS_Plugin {
     public function check_db_version() {
         if (get_option('msfm_db_version') !== MSFM_VERSION) {
             $this->create_db_tables();
-            add_action('admin_init', array($this, 'ensure_pages_exist'));
             update_option('msfm_db_version', MSFM_VERSION);
         }
-    }
-
-    public function ensure_pages_exist() {
-        MSFM_Settings::get_or_create_page('msfm_checkout_page_id', 'Checkout', '[saas_checkout_page]', 'checkout');
-        MSFM_Settings::get_or_create_page('msfm_login_page_id', 'Login', '[saas_login_form]', 'login');
-        MSFM_Settings::get_or_create_page('msfm_portal_page_id', 'My Profile', '[saas_user_portal]', 'my-profile');
     }
 
     private function create_db_tables() {

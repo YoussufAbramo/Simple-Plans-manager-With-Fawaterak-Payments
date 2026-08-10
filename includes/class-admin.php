@@ -10,7 +10,6 @@ class MSFM_Admin {
         add_action('admin_menu', array($this, 'add_orders_menu'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
         
-        // Admin handler to update order payment status
         add_action('admin_post_msfm_update_order_status', array($this, 'handle_update_order_status'));
 
         add_filter('manage_saas_package_posts_columns', array($this, 'set_custom_plan_columns'));
@@ -25,24 +24,24 @@ class MSFM_Admin {
 
     public static function register_package_cpt() {
         $labels = array(
-            'name'                  => _x('Qaff Plans', 'Post Type General Name', 'qaff-microsaas'),
-            'singular_name'         => _x('Qaff Plan', 'Post Type Singular Name', 'qaff-microsaas'),
-            'menu_name'             => __('Qaff Plans', 'qaff-microsaas'),
-            'name_admin_bar'        => __('Qaff Plan', 'qaff-microsaas'),
-            'archives'              => __('Plan Archives', 'qaff-microsaas'),
-            'all_items'             => __('All Plans', 'qaff-microsaas'),
-            'add_new_item'          => __('Add New Plan', 'qaff-microsaas'),
-            'add_new'               => __('Add New Plan', 'qaff-microsaas'),
-            'new_item'              => __('New Plan', 'qaff-microsaas'),
-            'edit_item'             => __('Edit Plan', 'qaff-microsaas'),
-            'update_item'           => __('Update Plan', 'qaff-microsaas'),
-            'view_item'             => __('View Plan', 'qaff-microsaas'),
-            'search_items'          => __('Search Plans', 'qaff-microsaas'),
+            'name'                  => _x('Plans Manager', 'Post Type General Name', 'simple-plans-manager'),
+            'singular_name'         => _x('Plan', 'Post Type Singular Name', 'simple-plans-manager'),
+            'menu_name'             => __('Plans Manager', 'simple-plans-manager'),
+            'name_admin_bar'        => __('Plan', 'simple-plans-manager'),
+            'archives'              => __('Plan Archives', 'simple-plans-manager'),
+            'all_items'             => __('All Plans', 'simple-plans-manager'),
+            'add_new_item'          => __('Add New Plan', 'simple-plans-manager'),
+            'add_new'               => __('Add New Plan', 'simple-plans-manager'),
+            'new_item'              => __('New Plan', 'simple-plans-manager'),
+            'edit_item'             => __('Edit Plan', 'simple-plans-manager'),
+            'update_item'           => __('Update Plan', 'simple-plans-manager'),
+            'view_item'             => __('View Plan', 'simple-plans-manager'),
+            'search_items'          => __('Search Plans', 'simple-plans-manager'),
         );
 
         register_post_type('saas_package', array(
-            'label'                 => __('Qaff Plan', 'qaff-microsaas'),
-            'description'           => __('Micro SaaS Pricing Plans', 'qaff-microsaas'),
+            'label'                 => __('Plan', 'simple-plans-manager'),
+            'description'           => __('Subscription Pricing Plans', 'simple-plans-manager'),
             'labels'                => $labels,
             'public'                => true,
             'show_in_menu'          => true,
@@ -56,12 +55,12 @@ class MSFM_Admin {
     public function set_custom_plan_columns($columns) {
         $new_columns = array();
         $new_columns['cb']                 = $columns['cb'];
-        $new_columns['title']              = __('Plan Name', 'qaff-microsaas');
-        $new_columns['monthly_price']      = __('Monthly Price', 'qaff-microsaas');
-        $new_columns['monthly_sale_price'] = __('Monthly Sale', 'qaff-microsaas');
-        $new_columns['annual_price']       = __('Annual Price', 'qaff-microsaas');
-        $new_columns['annual_sale_price']  = __('Annual Sale', 'qaff-microsaas');
-        $new_columns['shortcode']          = __('Shortcode', 'qaff-microsaas');
+        $new_columns['title']              = __('Plan Name', 'simple-plans-manager');
+        $new_columns['monthly_price']      = __('Monthly Price', 'simple-plans-manager');
+        $new_columns['monthly_sale_price'] = __('Monthly Sale', 'simple-plans-manager');
+        $new_columns['annual_price']       = __('Annual Price', 'simple-plans-manager');
+        $new_columns['annual_sale_price']  = __('Annual Sale', 'simple-plans-manager');
+        $new_columns['shortcode']          = __('Shortcode', 'simple-plans-manager');
         $new_columns['date']               = $columns['date'];
 
         return $new_columns;
@@ -190,7 +189,7 @@ class MSFM_Admin {
         $orders = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}microsaas_orders ORDER BY created_at DESC");
         ?>
         <div class="wrap">
-            <h2>Qaff Micro SaaS Orders & Payments</h2>
+            <h2>Simple Plans & Fawaterak Orders</h2>
 
             <?php if (isset($_GET['updated_status'])): ?>
                 <div class="notice notice-success is-dismissible">
@@ -243,70 +242,69 @@ class MSFM_Admin {
                             </td>
                             <td><?php echo esc_html(date('M d, Y', strtotime($order->created_at))); ?></td>
                             <td>
-                                <a href="#TB_inline?width=750&height=480&inlineId=order-details-modal-<?php echo $order->id; ?>" class="thickbox button button-small">View Details</a>
+                                <a href="#TB_inline?width=750&height=520&inlineId=order-details-modal-<?php echo $order->id; ?>" class="thickbox button button-small">View Details</a>
                                 
-                                <!-- Restyled Modal Popup with Status Editing Capabilities -->
                                 <div id="order-details-modal-<?php echo $order->id; ?>" style="display:none;">
-                                    <div style="padding: 25px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #2d3748;">
+                                    <div style="padding: 30px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #2d3748; background: #f8fafc; height: 100%; box-sizing: border-box;">
                                         
-                                        <!-- Header Section -->
-                                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #edf2f7; padding-bottom: 15px; margin-bottom: 20px;">
+                                        <div style="background: #ffffff; padding: 20px; border-radius: 10px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
                                             <div>
-                                                <h2 style="margin: 0; font-size: 22px; color: #1a202c; display: inline-block;">Order <span style="color: #3182ce;">#<?php echo esc_html($order->id); ?></span></h2>
-                                                <div style="margin-top: 4px; font-size: 13px; color: #718096;"><?php echo esc_html(date('F j, Y, g:i a', strtotime($order->created_at))); ?></div>
+                                                <span style="font-size: 12px; font-weight: bold; color: #718096; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 2px;">Transaction Details</span>
+                                                <h2 style="margin: 0; font-size: 22px; color: #1a202c;">Order <span style="color: #3182ce;">#<?php echo esc_html($order->id); ?></span></h2>
+                                                <div style="margin-top: 4px; font-size: 12px; color: #a0aec0;"><?php echo esc_html(date('F j, Y — g:i a', strtotime($order->created_at))); ?></div>
                                             </div>
-                                            <span style="background: <?php echo $bg; ?>; color: <?php echo $col; ?>; padding: 6px 14px; border-radius: 20px; font-weight: bold; font-size: 13px; letter-spacing: 0.5px; text-transform: uppercase;">
-                                                <?php echo esc_html($status_str); ?>
-                                            </span>
+                                            <div style="text-align: right;">
+                                                <span style="display: inline-block; background: <?php echo $bg; ?>; color: <?php echo $col; ?>; padding: 6px 14px; border-radius: 20px; font-weight: bold; font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase;">
+                                                    ● <?php echo esc_html($status_str); ?>
+                                                </span>
+                                            </div>
                                         </div>
 
-                                        <!-- 2-Column Details -->
                                         <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;">
-                                            
-                                            <!-- Customer Details Card -->
-                                            <div style="flex: 1 1 300px; background: #f7fafc; padding: 18px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                                                <h3 style="margin-top: 0; color: #4a5568; font-size: 15px; border-bottom: 1px solid #cbd5e0; padding-bottom: 8px; margin-bottom: 12px;">👤 Customer Details</h3>
-                                                <p style="margin: 6px 0; font-size: 13px;"><strong>Name:</strong> <?php echo esc_html($order->full_name ? $order->full_name : 'N/A'); ?></p>
-                                                <p style="margin: 6px 0; font-size: 13px;"><strong>Email:</strong> <?php echo esc_html($user ? $user->user_email : 'N/A'); ?></p>
-                                                <p style="margin: 6px 0; font-size: 13px;"><strong>Phone:</strong> <?php echo esc_html($order->phone_number ? $order->phone_number : 'N/A'); ?></p>
-                                                <p style="margin: 6px 0; font-size: 13px;"><strong>Country:</strong> <?php echo esc_html($order->country ? $order->country : 'N/A'); ?></p>
-                                                <p style="margin: 6px 0; font-size: 13px;"><strong>Address:</strong> <?php echo esc_html($order->address ? $order->address : 'N/A'); ?></p>
-                                                <p style="margin: 6px 0; font-size: 13px;"><strong>ZIP Code:</strong> <?php echo esc_html($order->zip_code ? $order->zip_code : 'N/A'); ?></p>
+                                            <div style="flex: 1 1 300px; background: #ffffff; padding: 20px; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                                                <h4 style="margin: 0 0 12px 0; color: #4a5568; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid #edf2f7; padding-bottom: 8px;">Customer Information</h4>
+                                                <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+                                                    <tr><td style="padding: 4px 0; color: #718096; width: 35%;">Full Name:</td><td style="padding: 4px 0; font-weight: 600; color: #2d3748;"><?php echo esc_html($order->full_name ? $order->full_name : 'N/A'); ?></td></tr>
+                                                    <tr><td style="padding: 4px 0; color: #718096;">Email Address:</td><td style="padding: 4px 0; font-weight: 600; color: #2d3748;"><?php echo esc_html($user ? $user->user_email : 'N/A'); ?></td></tr>
+                                                    <tr><td style="padding: 4px 0; color: #718096;">Phone Number:</td><td style="padding: 4px 0; font-weight: 600; color: #2d3748;"><?php echo esc_html($order->phone_number ? $order->phone_number : 'N/A'); ?></td></tr>
+                                                    <tr><td style="padding: 4px 0; color: #718096;">Country:</td><td style="padding: 4px 0; font-weight: 600; color: #2d3748;"><?php echo esc_html($order->country ? $order->country : 'N/A'); ?></td></tr>
+                                                    <tr><td style="padding: 4px 0; color: #718096;">Street Address:</td><td style="padding: 4px 0; font-weight: 600; color: #2d3748;"><?php echo esc_html($order->address ? $order->address : 'N/A'); ?></td></tr>
+                                                    <tr><td style="padding: 4px 0; color: #718096;">ZIP Code:</td><td style="padding: 4px 0; font-weight: 600; color: #2d3748;"><?php echo esc_html($order->zip_code ? $order->zip_code : 'N/A'); ?></td></tr>
+                                                </table>
                                             </div>
 
-                                            <!-- Order Details Card -->
-                                            <div style="flex: 1 1 300px; background: #f7fafc; padding: 18px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                                                <h3 style="margin-top: 0; color: #4a5568; font-size: 15px; border-bottom: 1px solid #cbd5e0; padding-bottom: 8px; margin-bottom: 12px;">🛍️ Order Breakdown</h3>
-                                                <p style="margin: 6px 0; font-size: 13px;"><strong>Selected Plan:</strong> <?php echo esc_html($package ? $package->post_title : 'N/A'); ?></p>
-                                                <p style="margin: 6px 0; font-size: 13px;"><strong>Billing Cycle:</strong> <span style="text-transform: capitalize;"><?php echo esc_html($order->billing_cycle); ?></span></p>
-                                                <p style="margin: 6px 0; font-size: 13px;"><strong>Total Amount:</strong> <span style="color: #2b6cb0; font-weight: bold; font-size: 15px;"><?php echo esc_html(MSFM_Settings::format_price($order->amount)); ?></span></p>
-                                                <p style="margin: 6px 0; font-size: 13px;"><strong>Payment Method:</strong> <span style="text-transform: capitalize;"><?php echo esc_html($order->payment_method ? $order->payment_method : 'Fawaterak'); ?></span></p>
-                                                <p style="margin: 6px 0; font-size: 13px;"><strong>Gateway Invoice ID:</strong> <?php echo esc_html($order->fawaterak_invoice_id ? $order->fawaterak_invoice_id : '—'); ?></p>
+                                            <div style="flex: 1 1 300px; background: #ffffff; padding: 20px; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                                                <h4 style="margin: 0 0 12px 0; color: #4a5568; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid #edf2f7; padding-bottom: 8px;">Subscription Breakdown</h4>
+                                                <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+                                                    <tr><td style="padding: 6px 0; color: #718096; width: 40%;">Selected Plan:</td><td style="padding: 6px 0; font-weight: 600; color: #2d3748;"><?php echo esc_html($package ? $package->post_title : 'N/A'); ?></td></tr>
+                                                    <tr><td style="padding: 6px 0; color: #718096;">Billing Cycle:</td><td style="padding: 6px 0; font-weight: 600; color: #2d3748; text-transform: capitalize;"><?php echo esc_html($order->billing_cycle); ?></td></tr>
+                                                    <tr><td style="padding: 6px 0; color: #718096;">Total Amount:</td><td style="padding: 6px 0; font-weight: bold; color: #2b6cb0; font-size: 15px;"><?php echo esc_html(MSFM_Settings::format_price($order->amount)); ?></td></tr>
+                                                    <tr><td style="padding: 6px 0; color: #718096;">Payment Method:</td><td style="padding: 6px 0; font-weight: 600; color: #2d3748; text-transform: uppercase;"><?php echo esc_html($order->payment_method ? $order->payment_method : 'Fawaterak'); ?></td></tr>
+                                                    <tr><td style="padding: 6px 0; color: #718096;">Gateway Invoice:</td><td style="padding: 6px 0; font-weight: 600; color: #2d3748;"><?php echo esc_html($order->fawaterak_invoice_id ? $order->fawaterak_invoice_id : '—'); ?></td></tr>
+                                                </table>
                                             </div>
-
                                         </div>
 
-                                        <!-- Edit Payment Status Form -->
-                                        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px;">
+                                        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
                                             <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="POST" style="margin: 0;">
                                                 <?php wp_nonce_field('msfm_update_order_status_action', 'msfm_order_status_nonce'); ?>
                                                 <input type="hidden" name="action" value="msfm_update_order_status">
                                                 <input type="hidden" name="order_id" value="<?php echo esc_attr($order->id); ?>">
                                                 
-                                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 15px;">
+                                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 15px; flex-wrap: wrap;">
                                                     <div>
-                                                        <label style="font-weight: bold; font-size: 13px; color: #2d3748; display: block;">Edit Payment Status:</label>
-                                                        <small style="color: #718096;">Manually update the status of this transaction in your database.</small>
+                                                        <span style="font-weight: bold; font-size: 13px; color: #1a202c; display: block; margin-bottom: 2px;">Manage Payment Status</span>
+                                                        <span style="font-size: 12px; color: #718096;">Change order state manually and trigger system updates.</span>
                                                     </div>
-                                                    <div style="display: flex; gap: 10px;">
-                                                        <select name="payment_status" style="padding: 6px 12px; border-radius: 4px; border: 1px solid #cbd5e0; font-size: 13px;">
+                                                    <div style="display: flex; gap: 10px; align-items: center;">
+                                                        <select name="payment_status" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e0; font-size: 13px; background: #f8fafc;">
                                                             <option value="pending" <?php selected($status_str, 'pending'); ?>>Pending</option>
                                                             <option value="completed" <?php selected(in_array($status_str, ['completed', 'paid']), true); ?>>Completed / Paid</option>
                                                             <option value="processing" <?php selected($status_str, 'processing'); ?>>Processing</option>
                                                             <option value="failed" <?php selected($status_str, 'failed'); ?>>Failed</option>
                                                             <option value="cancelled" <?php selected($status_str, 'cancelled'); ?>>Cancelled</option>
                                                         </select>
-                                                        <button type="submit" class="button button-primary">Save Status</button>
+                                                        <button type="submit" class="button button-primary" style="padding: 0 16px; height: 34px; line-height: 32px; font-weight: 600;">Update Status</button>
                                                     </div>
                                                 </div>
                                             </form>

@@ -1,12 +1,46 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
+// 1. Handle IFrame Integration Render
+if (isset($_GET['pay_iframe']) && isset($_GET['order_id'])) {
+    $order_id = intval($_GET['order_id']);
+    $iframe_url = get_transient('msfm_iframe_url_' . $order_id);
+    if ($iframe_url) {
+        ?>
+        <div class="qaff-checkout-wrapper" style="max-width: 900px; margin: 30px auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+            <h2 style="text-align: center; margin-top: 0; margin-bottom: 20px; color: #1a202c; font-size: 26px;">Complete Your Payment</h2>
+            <div style="background: #ffffff; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);">
+                <!-- Native Fawaterak IFrame -->
+                <iframe src="<?php echo esc_url($iframe_url); ?>" width="100%" height="750px" frameborder="0" style="border-radius: 8px;"></iframe>
+            </div>
+            <div style="text-align:center; margin-top: 15px;">
+                <a href="<?php echo esc_url(remove_query_arg(array('pay_iframe', 'order_id'))); ?>" style="color: #718096; text-decoration: none;">&laquo; Cancel & Return to Checkout</a>
+            </div>
+        </div>
+        <?php
+        return; // Prevent rendering the rest of the form
+    }
+}
+
 $enable_cod   = get_option('msfm_enable_cod', '1');
 $cod_label    = get_option('msfm_cod_label', 'Pay on Delivery / Cash on Delivery');
 $current_user = is_user_logged_in() ? wp_get_current_user() : null;
 ?>
 
 <div class="qaff-checkout-wrapper" style="max-width: 900px; margin: 30px auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #ffffff; padding: 35px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);">
+    
+    <!-- 2. Display Warning Banners Instead of 404 Error Pages -->
+    <?php if (isset($_GET['payment_failed'])): ?>
+        <div style="background: #fed7d7; color: #9b2c2c; padding: 15px; border-radius: 8px; border: 1px solid #f56565; margin-bottom: 25px; font-weight: 500;">
+            ❌ <strong>Payment Failed.</strong> Your transaction was canceled or declined. Please check your payment details and try again.
+        </div>
+    <?php endif; ?>
+    <?php if (isset($_GET['payment_pending'])): ?>
+        <div style="background: #feebc8; color: #744210; padding: 15px; border-radius: 8px; border: 1px solid #f6ad55; margin-bottom: 25px; font-weight: 500;">
+            ⏳ <strong>Payment Pending.</strong> Your payment is currently processing. Your subscription will be activated once confirmed by the bank.
+        </div>
+    <?php endif; ?>
+
     <h2 style="text-align: center; margin-top: 0; margin-bottom: 30px; color: #1a202c; font-size: 26px;">Checkout & Subscription</h2>
 
     <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="POST">
@@ -15,14 +49,19 @@ $current_user = is_user_logged_in() ? wp_get_current_user() : null;
 
         <div style="display: flex; flex-wrap: wrap; gap: 35px;">
             
-            <!-- Left Column: Customer Details -->
             <div style="flex: 1 1 450px;">
                 <h3 style="margin-top: 0; padding-bottom: 10px; border-bottom: 2px solid #3182ce; color: #2d3748; font-size: 18px;">1. Customer Details</h3>
                 
-                <p style="margin-bottom: 15px;">
-                    <label style="display: block; font-weight: 600; color: #4a5568; margin-bottom: 5px;">Full Name <span style="color:red;">*</span></label>
-                    <input type="text" name="full_name" required value="<?php echo $current_user ? esc_attr($current_user->display_name) : ''; ?>" style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box;">
-                </p>
+                <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                    <div style="flex: 1;">
+                        <label style="display: block; font-weight: 600; color: #4a5568; margin-bottom: 5px;">First Name <span style="color:red;">*</span></label>
+                        <input type="text" name="first_name" required value="<?php echo $current_user ? esc_attr($current_user->user_firstname) : ''; ?>" style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box;">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="display: block; font-weight: 600; color: #4a5568; margin-bottom: 5px;">Last Name <span style="color:red;">*</span></label>
+                        <input type="text" name="last_name" required value="<?php echo $current_user ? esc_attr($current_user->user_lastname) : ''; ?>" style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box;">
+                    </div>
+                </div>
 
                 <p style="margin-bottom: 15px;">
                     <label style="display: block; font-weight: 600; color: #4a5568; margin-bottom: 5px;">Phone Number (with country code) <span style="color:red;">*</span></label>
@@ -58,7 +97,6 @@ $current_user = is_user_logged_in() ? wp_get_current_user() : null;
                 </p>
             </div>
 
-            <!-- Right Column: Order Summary & Payment Options -->
             <div style="flex: 1 1 320px; background: #f8fafc; padding: 25px; border-radius: 8px; border: 1px solid #e2e8f0; height: fit-content;">
                 <h3 style="margin-top: 0; padding-bottom: 10px; border-bottom: 2px solid #3182ce; color: #2d3748; font-size: 18px;">3. Order Summary</h3>
 

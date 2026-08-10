@@ -70,22 +70,18 @@ class MSFM_Admin {
                 $regular = get_post_meta($post_id, '_monthly_price', true);
                 echo $regular ? esc_html(MSFM_Settings::format_price($regular)) : '<em>—</em>';
                 break;
-
             case 'monthly_sale_price':
                 $sale = get_post_meta($post_id, '_monthly_sale_price', true);
                 echo ($sale !== '' && $sale !== false) ? '<strong style="color:#080;">' . esc_html(MSFM_Settings::format_price($sale)) . '</strong>' : '<em>—</em>';
                 break;
-
             case 'annual_price':
                 $regular = get_post_meta($post_id, '_annual_price', true);
                 echo $regular ? esc_html(MSFM_Settings::format_price($regular)) : '<em>—</em>';
                 break;
-
             case 'annual_sale_price':
                 $sale = get_post_meta($post_id, '_annual_sale_price', true);
                 echo ($sale !== '' && $sale !== false) ? '<strong style="color:#080;">' . esc_html(MSFM_Settings::format_price($sale)) . '</strong>' : '<em>—</em>';
                 break;
-
             case 'shortcode':
                 echo '<code>[saas_checkout_button package_id="' . esc_attr($post_id) . '"] Buy Plan [/saas_checkout_button]</code>';
                 break;
@@ -117,7 +113,6 @@ class MSFM_Admin {
                     <input type="number" step="0.01" name="monthly_sale_price" value="<?php echo esc_attr($monthly_sale_price); ?>" class="widefat">
                 </p>
             </div>
-
             <div style="background: #f9f9f9; padding: 12px; border: 1px solid #e5e5e5; border-radius: 4px;">
                 <h4 style="margin: 0 0 10px 0;">Annual Billing</h4>
                 <p style="margin-bottom: 8px;">
@@ -139,9 +134,7 @@ class MSFM_Admin {
     }
 
     public function save_package_meta($post_id) {
-        if (!isset($_POST['msfm_package_nonce']) || !wp_verify_nonce($_POST['msfm_package_nonce'], 'msfm_save_package')) {
-            return;
-        }
+        if (!isset($_POST['msfm_package_nonce']) || !wp_verify_nonce($_POST['msfm_package_nonce'], 'msfm_save_package')) return;
         if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
         if (!current_user_can('edit_post', $post_id)) return;
 

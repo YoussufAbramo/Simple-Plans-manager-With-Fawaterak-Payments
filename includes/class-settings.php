@@ -6,7 +6,9 @@ class MSFM_Settings {
     public function __construct() {
         add_action('admin_menu', array($this, 'add_settings_menu'));
         add_action('admin_init', array($this, 'register_settings'));
-        add_action('admin_post_msfm_auto_create_page', array($this, 'handle_auto_create_page'));
+        
+        // New endpoint for the Re-create / Restore Pages tool
+        add_action('admin_post_msfm_recreate_pages', array($this, 'handle_recreate_pages'));
     }
 
     public static function get_or_create_page($option_key, $title, $content, $slug) {
@@ -68,9 +70,7 @@ class MSFM_Settings {
 
         // Payments Tab
         register_setting('msfm_settings_payments', 'msfm_fawaterak_env', array('default' => 'sandbox'));
-        register_setting('msfm_settings_payments', 'msfm_fawaterak_client_id', array('default' => ''));
-        register_setting('msfm_settings_payments', 'msfm_fawaterak_client_secret', array('default' => ''));
-        register_setting('msfm_settings_payments', 'msfm_fawaterak_token_url', array('default' => ''));
+        register_setting('msfm_settings_payments', 'msfm_fawaterak_api_key', array('default' => ''));
         register_setting('msfm_settings_payments', 'msfm_enable_cod', array('default' => '1'));
         register_setting('msfm_settings_payments', 'msfm_cod_label', array('default' => 'Pay on Delivery / Cash on Delivery'));
     }
@@ -83,27 +83,43 @@ class MSFM_Settings {
         <div class="wrap">
             <h2>Qaff Micro SaaS Settings</h2>
 
+            <?php if (isset($_GET['pages_restored']) && $_GET['pages_restored'] == '1'): ?>
+                <div class="notice notice-success is-dismissible">
+                    <p><strong>Success:</strong> Core pages have been successfully restored and linked.</p>
+                </div>
+            <?php endif; ?>
+
             <h2 class="nav-tab-wrapper">
                 <a href="?post_type=saas_package&page=qaff-settings&tab=general" class="nav-tab <?php echo $active_tab == 'general' ? 'nav-tab-active' : ''; ?>">General</a>
                 <a href="?post_type=saas_package&page=qaff-settings&tab=pages" class="nav-tab <?php echo $active_tab == 'pages' ? 'nav-tab-active' : ''; ?>">Pages</a>
                 <a href="?post_type=saas_package&page=qaff-settings&tab=payments" class="nav-tab <?php echo $active_tab == 'payments' ? 'nav-tab-active' : ''; ?>">Payments</a>
             </h2>
 
-            <form method="post" action="options.php" style="margin-top: 20px;">
-                <?php
-                if ($active_tab == 'general') {
-                    settings_fields('msfm_settings_general');
-                    $this->render_general_tab();
-                } elseif ($active_tab == 'pages') {
-                    settings_fields('msfm_settings_pages');
-                    $this->render_pages_tab();
-                } elseif ($active_tab == 'payments') {
-                    settings_fields('msfm_settings_payments');
-                    $this->render_payments_tab();
-                }
-                submit_button();
-                ?>
-            </form>
+            <?php if ($active_tab !== 'pages'): ?>
+                <form method="post" action="options.php" style="margin-top: 20px;">
+                    <?php
+                    if ($active_tab == 'general') {
+                        settings_fields('msfm_settings_general');
+                        $this->render_general_tab();
+                    } elseif ($active_tab == 'payments') {
+                        settings_fields('msfm_settings_payments');
+                        $this->render_payments_tab();
+                    }
+                    submit_button();
+                    ?>
+                </form>
+            <?php else: ?>
+                <!-- Pages Tab has custom layout to accommodate the tool button -->
+                <div style="margin-top: 20px;">
+                    <form method="post" action="options.php">
+                        <?php
+                        settings_fields('msfm_settings_pages');
+                        $this->render_pages_tab();
+                        submit_button('Save Page Links');
+                        ?>
+                    </form>
+                </div>
+            <?php endif; ?>
         </div>
         <?php
     }
@@ -156,7 +172,6 @@ class MSFM_Settings {
                         <input type="checkbox" name="msfm_enable_renewal_emails" value="1" <?php checked($enable_renewal, '1'); ?>>
                         Send automated renewal emails 3 days before subscription expires
                     </label>
-                    <p class="description">Includes a personalized message and a direct checkout link for the user.</p>
                 </td>
             </tr>
         </table>
@@ -182,59 +197,71 @@ class MSFM_Settings {
     }
 
     private function render_pages_tab() {
-        $checkout_page_id = self::get_or_create_page('msfm_checkout_page_id', 'Checkout', '[saas_checkout_page]', 'checkout');
-        $login_page_id    = self::get_or_create_page('msfm_login_page_id', 'Login', '[saas_login_form]', 'login');
-        $portal_page_id   = self::get_or_create_page('msfm_portal_page_id', 'My Profile', '[saas_user_portal]', 'my-profile');
+        $checkout_page_id = get_option('msfm_checkout_page_id');
+        $login_page_id    = get_option('msfm_login_page_id');
+        $portal_page_id   = get_option('msfm_portal_page_id');
         ?>
-        <p class="description">Note: Pages are automatically linked or generated if missing.</p>
+        <p class="description">Select the pages you want to use for the core plugin features. The shortcodes must be placed inside the content of these pages.</p>
         <table class="form-table">
             <tr valign="top">
-                <th scope="row">Checkout Page</th>
+                <th scope="row">Checkout Page<br><small><code>[saas_checkout_page]</code></small></th>
                 <td>
-                    <?php wp_dropdown_pages(array('name' => 'msfm_checkout_page_id', 'selected' => $checkout_page_id)); ?>
-                    <?php if ($checkout_page_id): ?>
+                    <?php wp_dropdown_pages(array('name' => 'msfm_checkout_page_id', 'selected' => $checkout_page_id, 'show_option_none' => '&mdash; Select Page &mdash;')); ?>
+                    <?php if ($checkout_page_id && get_post_status($checkout_page_id) === 'publish'): ?>
                         <a href="<?php echo esc_url(get_permalink($checkout_page_id)); ?>" target="_blank" class="button button-small" style="margin-left:10px; vertical-align:middle;">View Page &rarr;</a>
                     <?php endif; ?>
                 </td>
             </tr>
             <tr valign="top">
-                <th scope="row">Login Page</th>
+                <th scope="row">Login Page<br><small><code>[saas_login_form]</code></small></th>
                 <td>
-                    <?php wp_dropdown_pages(array('name' => 'msfm_login_page_id', 'selected' => $login_page_id)); ?>
-                    <?php if ($login_page_id): ?>
+                    <?php wp_dropdown_pages(array('name' => 'msfm_login_page_id', 'selected' => $login_page_id, 'show_option_none' => '&mdash; Select Page &mdash;')); ?>
+                    <?php if ($login_page_id && get_post_status($login_page_id) === 'publish'): ?>
                         <a href="<?php echo esc_url(get_permalink($login_page_id)); ?>" target="_blank" class="button button-small" style="margin-left:10px; vertical-align:middle;">View Page &rarr;</a>
                     <?php endif; ?>
                 </td>
             </tr>
             <tr valign="top">
-                <th scope="row">My Profile Page</th>
+                <th scope="row">My Profile Page<br><small><code>[saas_user_portal]</code></small></th>
                 <td>
-                    <?php wp_dropdown_pages(array('name' => 'msfm_portal_page_id', 'selected' => $portal_page_id)); ?>
-                    <?php if ($portal_page_id): ?>
+                    <?php wp_dropdown_pages(array('name' => 'msfm_portal_page_id', 'selected' => $portal_page_id, 'show_option_none' => '&mdash; Select Page &mdash;')); ?>
+                    <?php if ($portal_page_id && get_post_status($portal_page_id) === 'publish'): ?>
                         <a href="<?php echo esc_url(get_permalink($portal_page_id)); ?>" target="_blank" class="button button-small" style="margin-left:10px; vertical-align:middle;">View Page &rarr;</a>
                     <?php endif; ?>
                 </td>
             </tr>
         </table>
+        
+        <hr style="margin: 30px 0;">
+        
+        <!-- Page Recreation Tool -->
+        <h3>Page Repair Tools</h3>
+        <p class="description">If you accidentally deleted a page, or if the shortcode is missing, click the button below. It will safely restore the required pages and inject the correct shortcodes without breaking your menus.</p>
+        
+        <div style="background: #fff; padding: 15px; border: 1px solid #ccd0d4; border-left: 4px solid #3182ce; display: inline-block;">
+            <a href="<?php echo esc_url(wp_nonce_url(admin_url('admin-post.php?action=msfm_recreate_pages'), 'msfm_recreate_pages_action', 'msfm_recreate_nonce')); ?>" class="button button-secondary">
+                Restore Missing / Broken Pages
+            </a>
+        </div>
         <?php
     }
 
     private function render_payments_tab() {
         $fawaterak_env = get_option('msfm_fawaterak_env', 'sandbox');
-        $client_id     = get_option('msfm_fawaterak_client_id');
-        $client_secret = get_option('msfm_fawaterak_client_secret');
-        $token_url     = get_option('msfm_fawaterak_token_url');
+        $api_key       = get_option('msfm_fawaterak_api_key');
         $enable_cod    = get_option('msfm_enable_cod', '1');
         $cod_label     = get_option('msfm_cod_label', 'Pay on Delivery / Cash on Delivery');
         $webhook_url   = rest_url('qaff/v1/fawaterak-webhook');
         ?>
         <div style="background: #ebf8ff; border: 1px solid #3182ce; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
             <h4 style="margin-top:0; color:#2b6cb0;">🔗 Fawaterak Webhook Listener URL</h4>
-            <p style="margin-bottom:8px;">Copy and paste this Webhook URL into your <strong>Fawaterak Vendor Dashboard Account Settings</strong> to enable automated background order status updates:</p>
+            <p style="margin-bottom:8px;">Copy and paste this Webhook URL into your <strong>Fawaterak Dashboard Integrations</strong> to enable automated background order status updates:</p>
             <code style="font-size:14px; background:#fff; padding:6px 10px; border:1px solid #cbd5e0; border-radius:4px; display:inline-block; font-weight:bold;"><?php echo esc_url($webhook_url); ?></code>
         </div>
 
-        <h3>Fawaterak Online Gateway (OAuth 2.0)</h3>
+        <h3>Fawaterak Online Gateway</h3>
+        <p class="description">Fawaterak uses a static Bearer Token (API Key) for authentication. Retrieve this from your Fawaterak Dashboard &rarr; Integrations &rarr; API Key.</p>
+        
         <table class="form-table">
             <tr valign="top">
                 <th scope="row">Environment</th>
@@ -244,18 +271,11 @@ class MSFM_Settings {
                 </td>
             </tr>
             <tr valign="top">
-                <th scope="row">OAuth Token URL</th>
+                <th scope="row">Fawaterak API Key (Bearer Token)</th>
                 <td>
-                    <input type="url" name="msfm_fawaterak_token_url" value="<?php echo esc_attr($token_url); ?>" class="regular-text" placeholder="https://app.fawaterk.com/oauth/token">
+                    <input type="password" name="msfm_fawaterak_api_key" value="<?php echo esc_attr($api_key); ?>" class="regular-text">
+                    <p class="description">Used for authorization and validating HMAC Webhook signatures.</p>
                 </td>
-            </tr>
-            <tr valign="top">
-                <th scope="row">Client ID</th>
-                <td><input type="text" name="msfm_fawaterak_client_id" value="<?php echo esc_attr($client_id); ?>" class="regular-text"></td>
-            </tr>
-            <tr valign="top">
-                <th scope="row">Client Secret</th>
-                <td><input type="password" name="msfm_fawaterak_client_secret" value="<?php echo esc_attr($client_secret); ?>" class="regular-text"></td>
             </tr>
         </table>
         
@@ -275,11 +295,46 @@ class MSFM_Settings {
         <?php
     }
 
-    public function handle_auto_create_page() {
-        if (!current_user_can('manage_options') || !check_admin_referer('msfm_auto_page_nonce')) {
+    /**
+     * Tool: Soft Reset / Restore Core Pages
+     */
+    public function handle_recreate_pages() {
+        if (!current_user_can('manage_options') || !isset($_GET['msfm_recreate_nonce']) || !wp_verify_nonce($_GET['msfm_recreate_nonce'], 'msfm_recreate_pages_action')) {
             wp_die('Unauthorized request.');
         }
-        wp_redirect(admin_url('edit.php?post_type=saas_package&page=qaff-settings&tab=pages'));
+
+        $core_pages = array(
+            'msfm_checkout_page_id' => array('title' => 'Checkout', 'content' => '[saas_checkout_page]', 'slug' => 'checkout'),
+            'msfm_login_page_id'    => array('title' => 'Login', 'content' => '[saas_login_form]', 'slug' => 'login'),
+            'msfm_portal_page_id'   => array('title' => 'My Profile', 'content' => '[saas_user_portal]', 'slug' => 'my-profile'),
+        );
+
+        foreach ($core_pages as $option_key => $data) {
+            $page_id = get_option($option_key);
+            $page_exists = false;
+            
+            // Check if page exists (even if it's in the trash)
+            if ($page_id) {
+                $page = get_post($page_id);
+                if ($page && in_array($page->post_type, array('page', 'post'))) {
+                    $page_exists = true;
+                    
+                    // Soft Restore: Update existing post to preserve ID for menus
+                    wp_update_post(array(
+                        'ID'           => $page_id,
+                        'post_content' => $data['content'], // Restore shortcode
+                        'post_status'  => 'publish'         // Un-trash and publish
+                    ));
+                }
+            }
+
+            // If it was permanently deleted from DB, create a brand new one
+            if (!$page_exists) {
+                self::get_or_create_page($option_key, $data['title'], $data['content'], $data['slug']);
+            }
+        }
+
+        wp_redirect(admin_url('edit.php?post_type=saas_package&page=qaff-settings&tab=pages&pages_restored=1'));
         exit;
     }
 }

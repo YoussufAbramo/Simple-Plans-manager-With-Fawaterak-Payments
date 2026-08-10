@@ -80,37 +80,43 @@ class MSFM_Checkout {
         global $wpdb;
 
         $package_id     = intval($_POST['package_id']);
-        $billing_cycle = sanitize_text_field($_POST['billing_cycle']);
+        $billing_cycle  = sanitize_text_field($_POST['billing_cycle']);
         $payment_method = sanitize_text_field($_POST['payment_method']);
         $currency       = get_option('msfm_currency', 'USD');
 
-        $full_name    = sanitize_text_field($_POST['full_name']);
+        $first_name   = sanitize_text_field($_POST['first_name']);
+        $last_name    = sanitize_text_field($_POST['last_name']);
+        $full_name    = trim($first_name . ' ' . $last_name);
+        
         $phone_number = sanitize_text_field($_POST['phone_number']);
         $country      = isset($_POST['country']) ? sanitize_text_field($_POST['country']) : '';
         $address      = isset($_POST['address']) ? sanitize_textarea_field($_POST['address']) : '';
         $zip_code     = isset($_POST['zip_code']) ? sanitize_text_field($_POST['zip_code']) : '';
         
+        $plan_post    = get_post($package_id);
+        $plan_name    = $plan_post ? $plan_post->post_title : 'Subscription Plan';
+        
         if (is_user_logged_in()) {
-            $user_id = get_current_user_id();
+            $user_id    = get_current_user_id();
+            $user_email = wp_get_current_user()->user_email;
         } else {
-            $email    = sanitize_email($_POST['user_email']);
-            $password = $_POST['user_password'];
+            $user_email = sanitize_email($_POST['user_email']);
+            $password   = $_POST['user_password'];
 
-            if (email_exists($email)) {
+            if (email_exists($user_email)) {
                 wp_die('An account with this email already exists. Please log in first.');
             }
 
-            $user_id = wp_create_user($email, $password, $email);
+            $user_id = wp_create_user($user_email, $password, $user_email);
             wp_set_current_user($user_id);
             wp_set_auth_cookie($user_id);
         }
 
-        if (!empty($full_name)) {
-            $name_parts = explode(' ', $full_name, 2);
+        if (!empty($first_name)) {
             wp_update_user(array(
                 'ID'         => $user_id,
-                'first_name' => $name_parts[0],
-                'last_name'  => isset($name_parts[1]) ? $name_parts[1] : ''
+                'first_name' => $first_name,
+                'last_name'  => $last_name
             ));
         }
 
@@ -149,13 +155,34 @@ class MSFM_Checkout {
         }
 
         $payment_handler = new MSFM_Fawaterak();
-        $redirect_url = $payment_handler->create_invoice($order_id, $amount, get_userdata($user_id)->user_email);
+        $redirect_result = $payment_handler->create_invoice($order_id, $amount, $user_email, $first_name, $last_name, $phone_number, $plan_name);
 
-        if ($redirect_url) {
-            wp_redirect($redirect_url);
-            exit;
-        } else {
-            wp_die('Fawaterak Gateway Connection Failed. Please check your API settings.');
+        // Debug Output if connection fails
+        if (is_array($redirect_result) && isset($redirect_result['error'])) {
+            wp_die('<div style="max-width:600px; margin:50px auto; padding:30px; font-family:sans-serif; border:2px solid #e53e3e; border-radius:8px;">
+                <h2 style="color:#e53e3e; margin-top:0;">Payment Connection Failed</h2>
+                <p><strong>Error Details:</strong> ' . esc_html($redirect_result['error']) . '</p>
+                <a href="javascript:history.back()" style="display:inline-block; padding:10px 20px; background:#3182ce; color:#fff; text-decoration:none; border-radius:5px;">&laquo; Go Back to Checkout</a>
+            </div>');
+        } 
+        
+        if (is_string($redirect_result) && filter_var($redirect_result, FILTER_VALIDATE_URL)) {
+            $integration_type = get_option('msfm_fawaterak_integration_type', 'redirect');
+            
+            // Render Iframe
+            if ($integration_type === 'iframe') {
+                set_transient('msfm_iframe_url_' . $order_id, $redirect_result, 2 * HOUR_IN_SECONDS);
+                $checkout_page_id = get_option('msfm_checkout_page_id');
+                $iframe_page = add_query_arg(array('pay_iframe' => '1', 'order_id' => $order_id), get_permalink($checkout_page_id));
+                wp_redirect($iframe_page);
+                exit;
+            } else {
+                // Render Redirect
+                wp_redirect($redirect_result);
+                exit;
+            }
         }
+
+        wp_die('Fawaterak Gateway Connection Failed. An unknown error occurred.');
     }
 }

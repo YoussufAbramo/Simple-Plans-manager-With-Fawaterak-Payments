@@ -1,7 +1,7 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-// 1. Enhanced Embedded IFrame Payment Render
+// 1. Embedded IFrame Payment Render
 if (isset($_GET['pay_iframe']) && isset($_GET['order_id'])) {
     $order_id = intval($_GET['order_id']);
     $iframe_url = get_transient('msfm_iframe_url_' . $order_id);
@@ -9,15 +9,17 @@ if (isset($_GET['pay_iframe']) && isset($_GET['order_id'])) {
     global $wpdb;
     $order = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}microsaas_orders WHERE id = %d", $order_id));
     $package = $order ? get_post($order->package_id) : null;
+
+    if (!$iframe_url && $order && !empty($order->fawaterak_url)) {
+        $iframe_url = $order->fawaterak_url;
+    }
     
     if ($iframe_url && $order) {
         ?>
         <div class="qaff-iframe-container" style="max-width: 850px; margin: 40px auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #2d3748;">
             
-            <!-- Sleek Card Container -->
             <div style="background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); overflow: hidden;">
                 
-                <!-- Order Summary Header -->
                 <div style="background: #f8fafc; padding: 25px 30px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                     <div>
                         <span style="font-size: 12px; font-weight: bold; color: #718096; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 3px;">Complete Payment</span>
@@ -36,28 +38,25 @@ if (isset($_GET['pay_iframe']) && isset($_GET['order_id'])) {
                     </div>
                 </div>
 
-                <!-- Trust Indicator -->
                 <div style="background: #ebf8ff; border-bottom: 1px solid #bee3f8; padding: 10px 30px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; color: #2b6cb0; font-weight: 500;">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                     256-Bit SSL Encrypted & Secure Fawaterak Payment
                 </div>
 
-                <!-- IFrame Wrapper with Loading Spinner -->
-                <div style="position: relative; min-height: 700px; background: #ffffff;">
-                    
+                <!-- IFrame Container with 1350px Height -->
+                <div style="position: relative; background: #ffffff; min-height: 1350px;">
                     <div id="qaff-iframe-loader" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #ffffff; z-index: 10;">
                         <div class="qaff-spinner" style="width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: #3182ce; border-radius: 50%; animation: qaff-spin 1s linear infinite;"></div>
                         <p style="margin-top: 15px; color: #718096; font-size: 14px;">Loading Secure Payment Checkout...</p>
                     </div>
 
-                    <iframe id="qaff-fawaterak-iframe" src="<?php echo esc_url($iframe_url); ?>" width="100%" height="750px" frameborder="0" style="border: 0; width: 100%; border-radius: 0 0 12px 12px; display: block; position: relative; z-index: 20;" onload="document.getElementById('qaff-iframe-loader').style.display='none';"></iframe>
+                    <iframe id="qaff-fawaterak-iframe" src="<?php echo esc_url($iframe_url); ?>" width="100%" height="1350px" frameborder="0" style="border: 0; width: 100%; height: 1350px; border-radius: 0 0 12px 12px; display: block; position: relative; z-index: 20;" onload="document.getElementById('qaff-iframe-loader').style.display='none';"></iframe>
                 </div>
 
             </div>
 
-            <!-- Cancel Action Link -->
             <div style="text-align: center; margin-top: 20px;">
-                <a href="<?php echo esc_url(remove_query_arg(array('pay_iframe', 'order_id'))); ?>" style="color: #e53e3e; text-decoration: none; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; opacity: 0.85; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.85'">
+                <a href="<?php echo esc_url(remove_query_arg(array('pay_iframe', 'order_id'))); ?>" style="color: #e53e3e; text-decoration: none; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; opacity: 0.85; transition: opacity 0.2s;">
                     &laquo; Cancel Transaction & Return to Checkout
                 </a>
             </div>

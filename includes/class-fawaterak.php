@@ -28,7 +28,6 @@ class MSFM_Fawaterak {
         $status         = isset($data['invoice_status']) ? strtolower(sanitize_text_field($data['invoice_status'])) : '';
         $hash_key_rec   = isset($data['hashKey']) ? sanitize_text_field($data['hashKey']) : '';
 
-        // Generate HMAC SHA256 Signature to validate sender
         $secret_key  = get_option('msfm_fawaterak_api_key', '');
         $query_param = "InvoiceId={$invoice_id}&InvoiceKey={$invoice_key}&PaymentMethod={$payment_method}";
         $hash_key_gen = hash_hmac('sha256', $query_param, $secret_key, false);
@@ -59,7 +58,7 @@ class MSFM_Fawaterak {
         $api_key  = get_option('msfm_fawaterak_api_key', '');
 
         if (empty($api_key)) {
-            return array('error' => 'Your Fawaterak API Key is missing. Please save it in the Qaff Settings -> Payments tab.');
+            return array('error' => 'Your Fawaterak API Key is missing. Please save it in the Settings -> Payments tab.');
         }
 
         $api_url = ($env === 'live')
@@ -72,7 +71,6 @@ class MSFM_Fawaterak {
         $base_checkout_url = $checkout_page_id ? get_permalink($checkout_page_id) : home_url('/');
         $base_portal_url   = $portal_page_id ? get_permalink($portal_page_id) : home_url('/my-profile');
         
-        // Redirection routes: Successful & Pending payments now route directly to the User Profile Page
         $success_url = add_query_arg('order_success', $order_id, $base_portal_url);
         $pending_url = add_query_arg(array('payment_pending' => '1', 'order_id' => $order_id), $base_portal_url);
         $fail_url    = add_query_arg(array('payment_failed' => '1', 'order_id' => $order_id), $base_checkout_url);
@@ -120,17 +118,20 @@ class MSFM_Fawaterak {
 
         if (isset($result['status']) && $result['status'] === 'success' && isset($result['data']['url'])) {
             global $wpdb;
-            $invoice_id = isset($result['data']['invoice_id']) ? $result['data']['invoice_id'] : '';
+            $invoice_id  = isset($result['data']['invoice_id']) ? $result['data']['invoice_id'] : '';
+            $invoice_url = $result['data']['url'];
+
             $wpdb->update(
                 $wpdb->prefix . 'microsaas_orders',
                 array(
                     'fawaterak_invoice_id' => $invoice_id,
+                    'fawaterak_url'        => $invoice_url,
                     'currency'             => $currency
                 ),
                 array('id' => $order_id)
             );
 
-            return $result['data']['url'];
+            return $invoice_url;
         }
 
         $error_msg = isset($result['message']) ? (is_array($result['message']) ? json_encode($result['message']) : $result['message']) : json_encode($result);

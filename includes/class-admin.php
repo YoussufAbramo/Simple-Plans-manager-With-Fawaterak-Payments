@@ -7,7 +7,7 @@ class MSFM_Admin {
         add_action('init', array($this, 'register_package_cpt'));
         add_action('add_meta_boxes', array($this, 'add_package_metaboxes'));
         add_action('save_post', array($this, 'save_package_meta'));
-        add_action('admin_menu', array($this, 'add_orders_menu'));
+        add_action('admin_menu', array($this, 'add_admin_menu_pages'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
         
         add_action('admin_post_msfm_update_order_status', array($this, 'handle_update_order_status'));
@@ -17,7 +17,7 @@ class MSFM_Admin {
     }
 
     public function enqueue_admin_scripts($hook) {
-        if (strpos($hook, 'msfm-orders') !== false) {
+        if (strpos($hook, 'msfm-orders') !== false || strpos($hook, 'msfm-subscribers') !== false) {
             add_thickbox();
         }
     }
@@ -148,7 +148,16 @@ class MSFM_Admin {
         }
     }
 
-    public function add_orders_menu() {
+    public function add_admin_menu_pages() {
+        add_submenu_page(
+            'edit.php?post_type=saas_package',
+            'Subscribers List',
+            'Subscribers',
+            'manage_options',
+            'msfm-subscribers',
+            array($this, 'render_subscribers_page')
+        );
+
         add_submenu_page(
             'edit.php?post_type=saas_package',
             'Orders & Transactions',
@@ -183,6 +192,88 @@ class MSFM_Admin {
         exit;
     }
 
+    /**
+     * Submenu Page: Active & Expired Subscribers List
+     */
+    public function render_subscribers_page() {
+        if (!current_user_can('manage_options')) return;
+        global $wpdb;
+
+        // Fetch subscriptions that are Completed/Paid (Active) or Expired (Excludes Pending/Failed/Cancelled)
+        $subscribers = $wpdb->get_results("
+            SELECT o.*, u.user_email, u.user_registered 
+            FROM {$wpdb->prefix}microsaas_orders o
+            LEFT JOIN {$wpdb->users} u ON o.user_id = u.ID
+            WHERE o.payment_status IN ('completed', 'paid', 'processing', 'expired')
+            ORDER BY o.created_at DESC
+        ");
+        ?>
+        <div class="wrap">
+            <h2>Subscribers & Customers List</h2>
+            <p class="description">Displays all customers with currently active or expired subscriptions. Unactive/Pending/Failed payment attempts are excluded.</p>
+
+            <table class="wp-list-table widefat fixed striped" style="margin-top: 15px;">
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Company</th>
+                        <th>Phone</th>
+                        <th>Country</th>
+                        <th>Subscribed Plan</th>
+                        <th>Cycle</th>
+                        <th>Amount</th>
+                        <th>Subscription Status</th>
+                        <th>Subscribed Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($subscribers)): ?>
+                        <tr><td colspan="9">No active or expired subscribers found.</td></tr>
+                    <?php else: foreach ($subscribers as $sub): 
+                        $user = get_userdata($sub->user_id);
+                        $package = get_post($sub->package_id);
+                        $customer_name = !empty($sub->full_name) ? $sub->full_name : ($user ? $user->display_name : 'Subscriber');
+                        $company_name  = !empty($sub->company) ? $sub->company : get_user_meta($sub->user_id, 'billing_company', true);
+                        
+                        // Expiration Check Logic
+                        $created_time = strtotime($sub->created_at);
+                        $days_limit   = ($sub->billing_cycle === 'annual') ? 365 : 30;
+                        $expire_time  = strtotime("+{$days_limit} days", $created_time);
+                        $is_expired   = time() > $expire_time;
+
+                        if ($is_expired || strtolower($sub->payment_status) === 'expired') {
+                            $status_label = 'Expired';
+                            $bg = '#fed7d7'; $col = '#9b2c2c';
+                        } else {
+                            $status_label = 'Active';
+                            $bg = '#c6f6d5'; $col = '#22543d';
+                        }
+                    ?>
+                        <tr>
+                            <td>
+                                <strong><?php echo esc_html($customer_name); ?></strong><br>
+                                <small style="color: #718096;"><?php echo esc_html($sub->user_email ? $sub->user_email : 'N/A'); ?></small>
+                            </td>
+                            <td><?php echo !empty($company_name) ? '<strong>' . esc_html($company_name) . '</strong>' : '<em>—</em>'; ?></td>
+                            <td><?php echo esc_html($sub->phone_number ? $sub->phone_number : '—'); ?></td>
+                            <td><?php echo esc_html($sub->country ? $sub->country : '—'); ?></td>
+                            <td><strong><?php echo esc_html($package ? $package->post_title : 'N/A'); ?></strong></td>
+                            <td><?php echo esc_html(strtoupper($sub->billing_cycle)); ?></td>
+                            <td><?php echo esc_html(MSFM_Settings::format_price($sub->amount)); ?></td>
+                            <td>
+                                <span style="background: <?php echo $bg; ?>; color: <?php echo $col; ?>; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; text-transform: uppercase;">
+                                    ● <?php echo esc_html($status_label); ?>
+                                </span>
+                            </td>
+                            <td><?php echo esc_html(date('M d, Y', $created_time)); ?></td>
+                        </tr>
+                    <?php endforeach; endif; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php
+    }
+
     public function render_orders_page() {
         if (!current_user_can('manage_options')) return;
         global $wpdb;
@@ -202,6 +293,7 @@ class MSFM_Admin {
                     <tr>
                         <th>Order ID</th>
                         <th>Customer</th>
+                        <th>Company</th>
                         <th>Plan</th>
                         <th>Billing Cycle</th>
                         <th>Amount</th>
@@ -213,12 +305,13 @@ class MSFM_Admin {
                 </thead>
                 <tbody>
                     <?php if (empty($orders)): ?>
-                        <tr><td colspan="9">No orders found.</td></tr>
+                        <tr><td colspan="10">No orders found.</td></tr>
                     <?php else: foreach ($orders as $order): 
                         $user = get_userdata($order->user_id);
                         $package = get_post($order->package_id);
                         $customer_name = !empty($order->full_name) ? $order->full_name : ($user ? $user->display_name : 'Guest');
-                        
+                        $company_name  = !empty($order->company) ? $order->company : get_user_meta($order->user_id, 'billing_company', true);
+
                         $status_str = strtolower($order->payment_status);
                         $bg = '#edf2f7'; $col = '#4a5568';
                         if (in_array($status_str, ['completed', 'paid'])) { $bg = '#c6f6d5'; $col = '#22543d'; }
@@ -231,6 +324,7 @@ class MSFM_Admin {
                                 <strong><?php echo esc_html($customer_name); ?></strong><br>
                                 <small><?php echo esc_html($user ? $user->user_email : 'N/A'); ?></small>
                             </td>
+                            <td><?php echo !empty($company_name) ? esc_html($company_name) : '<em>—</em>'; ?></td>
                             <td><?php echo esc_html($package ? $package->post_title : 'N/A'); ?></td>
                             <td><?php echo esc_html(strtoupper($order->billing_cycle)); ?></td>
                             <td><?php echo esc_html(MSFM_Settings::format_price($order->amount)); ?></td>
@@ -265,6 +359,7 @@ class MSFM_Admin {
                                                 <h4 style="margin: 0 0 12px 0; color: #4a5568; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid #edf2f7; padding-bottom: 8px;">Customer Information</h4>
                                                 <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
                                                     <tr><td style="padding: 4px 0; color: #718096; width: 35%;">Full Name:</td><td style="padding: 4px 0; font-weight: 600; color: #2d3748;"><?php echo esc_html($order->full_name ? $order->full_name : 'N/A'); ?></td></tr>
+                                                    <tr><td style="padding: 4px 0; color: #718096;">Company:</td><td style="padding: 4px 0; font-weight: 600; color: #2d3748;"><?php echo esc_html($company_name ? $company_name : 'N/A'); ?></td></tr>
                                                     <tr><td style="padding: 4px 0; color: #718096;">Email Address:</td><td style="padding: 4px 0; font-weight: 600; color: #2d3748;"><?php echo esc_html($user ? $user->user_email : 'N/A'); ?></td></tr>
                                                     <tr><td style="padding: 4px 0; color: #718096;">Phone Number:</td><td style="padding: 4px 0; font-weight: 600; color: #2d3748;"><?php echo esc_html($order->phone_number ? $order->phone_number : 'N/A'); ?></td></tr>
                                                     <tr><td style="padding: 4px 0; color: #718096;">Country:</td><td style="padding: 4px 0; font-weight: 600; color: #2d3748;"><?php echo esc_html($order->country ? $order->country : 'N/A'); ?></td></tr>

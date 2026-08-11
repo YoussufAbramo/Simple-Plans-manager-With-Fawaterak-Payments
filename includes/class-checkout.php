@@ -87,14 +87,13 @@ class MSFM_Checkout {
         $first_name   = sanitize_text_field($_POST['first_name']);
         $last_name    = sanitize_text_field($_POST['last_name']);
         $full_name    = trim($first_name . ' ' . $last_name);
+        $company      = isset($_POST['company']) ? sanitize_text_field($_POST['company']) : '';
         
         $phone_code   = isset($_POST['phone_code']) ? sanitize_text_field($_POST['phone_code']) : '';
         $raw_phone    = sanitize_text_field($_POST['phone_number']);
         
-        // Strip out all '+' signs, hyphens, and spaces
         $clean_phone  = preg_replace('/[^0-9]/', '', $phone_code . $raw_phone);
         
-        // Default Country to 'Egypt' if not explicitly provided
         $country      = isset($_POST['country']) && !empty(trim($_POST['country'])) ? sanitize_text_field($_POST['country']) : 'Egypt';
         $address      = isset($_POST['address']) ? sanitize_textarea_field($_POST['address']) : '';
         $zip_code     = isset($_POST['zip_code']) ? sanitize_text_field($_POST['zip_code']) : '';
@@ -126,6 +125,10 @@ class MSFM_Checkout {
             ));
         }
 
+        if (!empty($company)) {
+            update_user_meta($user_id, 'billing_company', $company);
+        }
+
         if ($billing_cycle === 'annual') {
             $sale    = get_post_meta($package_id, '_annual_sale_price', true);
             $regular = get_post_meta($package_id, '_annual_price', true);
@@ -137,7 +140,6 @@ class MSFM_Checkout {
         $amount = ($sale !== '' && $sale !== false) ? $sale : $regular;
         $status = ($payment_method === 'cod') ? 'processing' : 'pending';
 
-        // 1. Order is immediately registered in Dashboard Database
         $wpdb->insert($wpdb->prefix . 'microsaas_orders', array(
             'user_id'        => $user_id,
             'package_id'     => $package_id,
@@ -147,6 +149,7 @@ class MSFM_Checkout {
             'payment_status' => $status,
             'payment_method' => $payment_method,
             'full_name'      => $full_name,
+            'company'        => $company,
             'phone_number'   => $clean_phone,
             'country'        => $country,
             'address'        => $address,
@@ -165,7 +168,6 @@ class MSFM_Checkout {
         
         $redirect_result = $payment_handler->create_invoice($order_id, $amount, $user_email, $first_name, $last_name, $clean_phone, $plan_name, $address, $country);
 
-        // 2. Catch API Error gracefully
         if (is_array($redirect_result) && isset($redirect_result['error'])) {
             $wpdb->update(
                 $wpdb->prefix . 'microsaas_orders',
@@ -185,7 +187,6 @@ class MSFM_Checkout {
             exit;
         } 
         
-        // 3. Handle Gateway Redirection or IFrame
         if (is_string($redirect_result) && filter_var($redirect_result, FILTER_VALIDATE_URL)) {
             $integration_type = get_option('msfm_fawaterak_integration_type', 'redirect');
             

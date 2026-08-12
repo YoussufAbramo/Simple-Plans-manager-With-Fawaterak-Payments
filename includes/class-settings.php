@@ -90,9 +90,10 @@ class MSFM_Settings {
                 <a href="?post_type=saas_package&page=qaff-settings&tab=general" class="nav-tab <?php echo $active_tab == 'general' ? 'nav-tab-active' : ''; ?>">General</a>
                 <a href="?post_type=saas_package&page=qaff-settings&tab=pages" class="nav-tab <?php echo $active_tab == 'pages' ? 'nav-tab-active' : ''; ?>">Pages</a>
                 <a href="?post_type=saas_package&page=qaff-settings&tab=payments" class="nav-tab <?php echo $active_tab == 'payments' ? 'nav-tab-active' : ''; ?>">Payments</a>
+                <a href="?post_type=saas_package&page=qaff-settings&tab=developer" class="nav-tab <?php echo $active_tab == 'developer' ? 'nav-tab-active' : ''; ?>">Developer Reference</a>
             </h2>
 
-            <?php if ($active_tab !== 'pages'): ?>
+            <?php if (in_array($active_tab, array('general', 'payments'))): ?>
                 <form method="post" action="options.php" style="margin-top: 20px;">
                     <?php
                     if ($active_tab == 'general') {
@@ -105,7 +106,7 @@ class MSFM_Settings {
                     submit_button();
                     ?>
                 </form>
-            <?php else: ?>
+            <?php elseif ($active_tab === 'pages'): ?>
                 <div style="margin-top: 20px;">
                     <form method="post" action="options.php">
                         <?php
@@ -114,6 +115,10 @@ class MSFM_Settings {
                         submit_button('Save Page Links');
                         ?>
                     </form>
+                </div>
+            <?php elseif ($active_tab === 'developer'): ?>
+                <div style="margin-top: 20px;">
+                    <?php $this->render_developer_tab(); ?>
                 </div>
             <?php endif; ?>
         </div>
@@ -371,8 +376,6 @@ class MSFM_Settings {
                 testCardsSection.style.display = 'none';
             }
         }
-        
-        // Pure JavaScript Copy to Clipboard with execCommand Fallback
         function qaffCopyCard(text, btn) {
             function showSuccess() {
                 btn.classList.add('copied');
@@ -422,6 +425,80 @@ class MSFM_Settings {
                 <td><input type="text" name="msfm_cod_label" value="<?php echo esc_attr($cod_label); ?>" class="regular-text"></td>
             </tr>
         </table>
+        <?php
+    }
+
+    private function render_developer_tab() {
+        $classes = array(
+            'Authentication / Login Page' => array(
+                'smpl_pkg_mngr-login-wrapper' => 'Main login form container wrapper',
+                'smpl_pkg_mngr-login-title'   => 'Login heading title element',
+                'smpl_pkg_mngr-login-tabs'    => 'Tab container switching Password & Magic link login',
+                'smpl_pkg_mngr-tab-btn'       => 'Individual login method tab button',
+                'smpl_pkg_mngr-tab-active'    => 'Active login tab highlight state',
+                'smpl_pkg_mngr-input-text'    => 'Username / Email input field',
+                'smpl_pkg_mngr-input-password'=> 'User password input field',
+                'smpl_pkg_mngr-btn-submit'    => 'Primary submit button for login & checkout forms',
+            ),
+            'Checkout Page' => array(
+                'smpl_pkg_mngr-checkout-wrapper' => 'Main checkout page outer card wrapper',
+                'smpl_pkg_mngr-section-title'    => 'Step headings (Customer Details, Order Summary, etc.)',
+                'smpl_pkg_mngr-input-field'      => 'Generic text and tel input fields',
+                'smpl_pkg_mngr-plan-select'      => 'Selected subscription plan dropdown selector',
+                'smpl_pkg_mngr-radio-group'      => 'Wrapper container for radio payment selections',
+                'smpl_pkg_mngr-iframe-container' => 'Embedded IFrame checkout outer container',
+            ),
+            'User Portal / Profile Dashboard' => array(
+                'smpl_pkg_mngr-portal-wrapper'   => 'Subscriber account dashboard main container',
+                'smpl_pkg_mngr-card'             => 'Dashboard grid card container',
+                'smpl_pkg_mngr-table'            => 'Payment History records table element',
+                'smpl_pkg_mngr-table-header'     => 'Table header row container',
+                'smpl_pkg_mngr-table-row'        => 'Individual payment record table row',
+                'smpl_pkg_mngr-btn-invoice'      => 'View Invoice modal trigger button',
+                'smpl_pkg_mngr-btn-pay'          => 'Pay Now pending transaction action link',
+                'smpl_pkg_mngr-modal-overlay'    => 'Full-screen dark modal overlay background',
+                'smpl_pkg_mngr-invoice-container'=> 'Printable invoice modal card content',
+            ),
+        );
+        ?>
+        <h3>Developer CSS Reference</h3>
+        <p class="description">All front-end pages utilize standard CSS class names starting with <code>smpl_pkg_mngr-</code> for seamless child theme styling.</p>
+
+        <?php foreach ($classes as $category => $items): ?>
+            <h4 style="margin-top: 25px; color: #2b6cb0; border-bottom: 1px solid #cbd5e0; padding-bottom: 6px;"><?php echo esc_html($category); ?></h4>
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th style="width: 35%;">CSS Class Name</th>
+                        <th>Target Element / Purpose</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($items as $class_name => $description): ?>
+                        <tr>
+                            <td><code>.<?php echo esc_html($class_name); ?></code></td>
+                            <td><?php echo esc_html($description); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endforeach; ?>
+
+        <div style="margin-top: 30px; background: #2d3748; color: #f7fafc; padding: 20px; border-radius: 8px;">
+            <h4 style="margin-top: 0; color: #63b3ed;">Custom CSS Snippet Example</h4>
+            <pre style="margin: 0; font-family: monospace; font-size: 13px; color: #e2e8f0;">
+/* Customize Primary Buttons */
+.smpl_pkg_mngr-btn-submit {
+    background-color: #2b6cb0 !important;
+    border-radius: 8px !important;
+}
+
+/* Style Printable Invoice Popup */
+.smpl_pkg_mngr-invoice-container {
+    border-top: 4px solid #3182ce;
+}
+            </pre>
+        </div>
         <?php
     }
 
